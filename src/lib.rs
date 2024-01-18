@@ -1,10 +1,7 @@
-use std::{
-    env::{self, args, current_dir},
-    fs::File,
-};
+use std::env::{self, args, current_dir};
 
 #[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
+use std::{fs::File, os::unix::fs::PermissionsExt};
 
 use axoasset::{AxoassetError, LocalAsset, SourceFile};
 use axoprocess::{AxoprocessError, Cmd};
@@ -139,9 +136,10 @@ impl AxoUpdater {
         };
 
         let installer_path = Utf8PathBuf::try_from(tempdir.path().join("installer"))?;
-        let installer_file = File::create(&installer_path)?;
 
-        if cfg!(unix) {
+        #[cfg(unix)]
+        {
+            let installer_file = File::create(&installer_path)?;
             let mut perms = installer_file.metadata()?.permissions();
             perms.set_mode(0o744);
             installer_file.set_permissions(perms)?;
