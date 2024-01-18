@@ -1,0 +1,25 @@
+[package]
+name = "axoupdater"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/axodotdev/axoupdater"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "axoupdater"
+path = "src/lib.rs"
+
+[dependencies]
+axoasset = { version = "0.6.1", default-features = false, features = ["json-serde"]}
+axoprocess = "0.1.0"
+camino = { version = "1.1.6", features = ["serde1"] }
+homedir = "0.2.1"
+reqwest = { version = "0.11", default-features = false, features = ["blocking", "default-tls", "json"] }
+serde = "1.0.195"
+temp-dir = "0.1.12"
+
+# errors
+miette = "5.6.0"
+thiserror = "1.0.56"
