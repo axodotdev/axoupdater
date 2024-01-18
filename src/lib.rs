@@ -25,6 +25,12 @@ pub struct AxoUpdater {
     current_version: Option<String>,
 }
 
+impl Default for AxoUpdater {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AxoUpdater {
     pub fn new() -> AxoUpdater {
         AxoUpdater {
@@ -88,14 +94,13 @@ impl AxoUpdater {
             });
         };
 
-        let release;
-        match &self.latest_release {
-            Some(r) => release = r,
+        let release = match &self.latest_release {
+            Some(r) => r,
             None => {
                 self.fetch_latest_release()?;
-                release = self.latest_release.as_ref().unwrap();
+                self.latest_release.as_ref().unwrap()
             }
-        }
+        };
 
         Ok(current_version != release.version())
     }
@@ -106,14 +111,13 @@ impl AxoUpdater {
             return Ok(());
         }
 
-        let release;
-        match &self.latest_release {
-            Some(r) => release = r,
+        let release = match &self.latest_release {
+            Some(r) => r,
             None => {
                 self.fetch_latest_release()?;
-                release = self.latest_release.as_ref().unwrap();
+                self.latest_release.as_ref().unwrap()
             }
-        }
+        };
         let tempdir = TempDir::new()?;
 
         let installer_url = match env::consts::OS {
@@ -249,7 +253,7 @@ pub struct Release {
 
 impl Release {
     pub fn version(&self) -> String {
-        if let Some(stripped) = self.tag_name.strip_prefix("v") {
+        if let Some(stripped) = self.tag_name.strip_prefix('v') {
             stripped.to_owned()
         } else {
             self.tag_name.to_owned()
@@ -313,18 +317,16 @@ pub fn get_latest_stable_release(
 pub fn get_app_name() -> Option<String> {
     if cfg!(debug_assertions) {
         Some("cargo-dist".to_owned())
+    } else if let Some(path) = args().next() {
+        Utf8PathBuf::from(path)
+            .file_name()
+            .and_then(|s| {
+                s.strip_suffix(".exe")
+                    .and_then(|s| s.strip_prefix("-update"))
+            })
+            .map(|s| s.to_owned())
     } else {
-        if let Some(path) = args().next() {
-            Utf8PathBuf::from(path)
-                .file_name()
-                .and_then(|s| {
-                    s.strip_suffix(".exe")
-                        .and_then(|s| s.strip_prefix("-update"))
-                })
-                .map(|s| s.to_owned())
-        } else {
-            None
-        }
+        None
     }
 }
 
@@ -355,5 +357,5 @@ pub fn load_receipt_for(app_name: &String) -> AxoupdateResult<InstallReceipt> {
 
     let install_receipt_path = receipt_prefix.join(format!("{app_name}-receipt.json"));
 
-    Ok(load_receipt_from_path(&install_receipt_path)?)
+    load_receipt_from_path(&install_receipt_path)
 }
