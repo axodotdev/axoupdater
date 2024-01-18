@@ -340,13 +340,11 @@ pub fn get_config_path(app_name: &String) -> AxoupdateResult<Utf8PathBuf> {
     }
 }
 
-pub fn load_receipt_from_path(
-    install_receipt_path: &Utf8PathBuf,
-) -> AxoupdateResult<InstallReceipt> {
+fn load_receipt_from_path(install_receipt_path: &Utf8PathBuf) -> AxoupdateResult<InstallReceipt> {
     Ok(SourceFile::load_local(install_receipt_path)?.deserialize_json()?)
 }
 
-pub fn load_receipt_for(app_name: &String) -> AxoupdateResult<InstallReceipt> {
+fn load_receipt_for(app_name: &String) -> AxoupdateResult<InstallReceipt> {
     let Ok(receipt_prefix) = get_config_path(app_name) else {
         return Err(AxoupdateError::ConfigFetchFailed {
             app_name: app_name.to_owned(),
