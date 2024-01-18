@@ -3,9 +3,14 @@ use std::process::exit;
 use axoupdater::{AxoUpdater, AxoupdateResult};
 
 fn real_main() -> AxoupdateResult<()> {
-    AxoUpdater::new_for_updater_executable()?
+    if AxoUpdater::new_for_updater_executable()?
         .load_receipt()?
-        .run()?;
+        .run()?
+    {
+        eprintln!("New release installed!")
+    } else {
+        eprintln!("Already up to date; not upgrading");
+    }
 
     Ok(())
 }

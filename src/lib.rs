@@ -102,10 +102,9 @@ impl AxoUpdater {
         Ok(current_version != release.version())
     }
 
-    pub fn run(&mut self) -> AxoupdateResult<()> {
+    pub fn run(&mut self) -> AxoupdateResult<bool> {
         if !self.is_update_needed()? {
-            eprintln!("Up to date!");
-            return Ok(());
+            return Ok(false);
         }
 
         let release = match &self.latest_release {
@@ -156,7 +155,7 @@ impl AxoUpdater {
 
         Cmd::new(&installer_path, "installer").run()?;
 
-        Ok(())
+        Ok(true)
     }
 
     fn fetch_latest_release(&mut self) -> AxoupdateResult<()> {
@@ -316,12 +315,10 @@ pub fn get_app_name() -> Option<String> {
     if cfg!(debug_assertions) {
         Some("cargo-dist".to_owned())
     } else if let Some(path) = args().next() {
-        Utf8PathBuf::from(path)
+        Utf8PathBuf::from(&path)
             .file_name()
-            .and_then(|s| {
-                s.strip_suffix(".exe")
-                    .and_then(|s| s.strip_prefix("-update"))
-            })
+            .map(|s| s.strip_suffix(".exe").unwrap_or(s))
+            .map(|s| s.strip_suffix("-update").unwrap_or(s))
             .map(|s| s.to_owned())
     } else {
         None
