@@ -13,6 +13,7 @@ path = "src/lib.rs"
 
 [features]
 standalone = ["axocli"]
+axo_releases = ["gazenot", "tokio"]
 
 [dependencies]
 axoasset = { version = "0.6.1", default-features = false, features = ["json-serde"]}
@@ -24,10 +25,14 @@ reqwest = { version = "0.11", default-features = false, features = ["blocking", 
 serde = "1.0.195"
 temp-dir = "0.1.12"
 
+# axo releases
+gazenot = { version = "0.2.1", features = ["client_lib"], optional = true }
+tokio = { version = "1.12.0", features = ["full"], optional = true }
+
 # errors
 miette = "5.6.0"
 thiserror = "1.0.56"
 
 [[bin]]
 name = "axoupdater"
-required-features = ["axocli"]
+required-features = ["axocli", "axo_releases"]

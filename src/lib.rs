@@ -6,6 +6,8 @@ use std::{fs::File, os::unix::fs::PermissionsExt};
 use axoasset::{AxoassetError, LocalAsset, SourceFile};
 use axoprocess::{AxoprocessError, Cmd};
 use camino::Utf8PathBuf;
+#[cfg(feature = "axo_releases")]
+use gazenot::{error::GazenotError, Gazenot};
 use miette::Diagnostic;
 use reqwest::{
     self,
@@ -170,7 +172,9 @@ impl AxoUpdater {
             });
         };
 
-        let Some(release) = get_latest_stable_release(&source.name, &source.owner)? else {
+        let Some(release) =
+            get_latest_stable_release(&source.name, &source.owner, &source.release_type)?
+        else {
             return Err(AxoupdateError::NoStableReleases {
                 app_name: app_name.to_owned(),
             });
@@ -204,6 +208,14 @@ pub enum AxoupdateError {
     #[error(transparent)]
     Axoprocess(#[from] AxoprocessError),
 
+    #[cfg(feature = "axo_releases")]
+    #[error(transparent)]
+    Gazenot(#[from] GazenotError),
+
+    #[error("Release is located on backend {backend}, but it's not enabled")]
+    #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
+    BackendDisabled { backend: String },
+
     #[error("Unable to determine config file path for app {app_name}!")]
     #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
     ConfigFetchFailed { app_name: String },
@@ -225,6 +237,9 @@ pub enum AxoupdateError {
 
     #[error("There are no stable releases available for {app_name}")]
     NoStableReleases { app_name: String },
+
+    #[error("No releases were found for the app {app_name}")]
+    ReleaseNotFound { app_name: String },
 
     #[error("App name calculated as `axoupdate'")]
     #[diagnostic(help(
@@ -254,6 +269,25 @@ impl Release {
             stripped.to_owned()
         } else {
             self.tag_name.to_owned()
+        }
+    }
+
+    #[cfg(feature = "axo_releases")]
+    pub fn from_gazenot(release: &gazenot::PublicRelease) -> Release {
+        Release {
+            tag_name: release.tag_name.to_owned(),
+            name: release.name.to_owned(),
+            url: String::new(),
+            assets: release
+                .assets
+                .iter()
+                .map(|asset| Asset {
+                    url: asset.browser_download_url.to_owned(),
+                    browser_download_url: asset.browser_download_url.to_owned(),
+                    name: asset.name.to_owned(),
+                })
+                .collect(),
+            prerelease: release.prerelease,
         }
     }
 }
@@ -287,7 +321,7 @@ pub struct InstallReceipt {
     pub version: String,
 }
 
-pub fn get_releases(name: &String, owner: &String) -> AxoupdateResult<Vec<Release>> {
+pub fn get_github_releases(name: &String, owner: &String) -> AxoupdateResult<Vec<Release>> {
     let client = reqwest::blocking::Client::new();
     let resp: Vec<Release> = client
         .get(format!("{GITHUB_API}/repos/{owner}/{name}/releases"))
@@ -302,11 +336,45 @@ pub fn get_releases(name: &String, owner: &String) -> AxoupdateResult<Vec<Releas
     Ok(resp)
 }
 
+#[cfg(feature = "axo_releases")]
+pub fn get_axo_releases(name: &String, owner: &String) -> AxoupdateResult<Vec<Release>> {
+    let abyss = Gazenot::new_unauthed("github".to_string(), owner)?;
+    let release_lists = tokio::runtime::Builder::new_current_thread()
+        .worker_threads(1)
+        .max_blocking_threads(128)
+        .enable_all()
+        .build()
+        .expect("Initializing tokio runtime failed")
+        .block_on(abyss.list_releases_many(vec![name.to_owned()]))?;
+    let Some(our_release) = release_lists.iter().find(|rl| &rl.package_name == name) else {
+        return Err(AxoupdateError::ReleaseNotFound {
+            app_name: name.to_owned(),
+        });
+    };
+
+    Ok(our_release
+        .releases
+        .iter()
+        .map(Release::from_gazenot)
+        .collect())
+}
+
 pub fn get_latest_stable_release(
     name: &String,
     owner: &String,
+    release_type: &ReleaseSourceType,
 ) -> AxoupdateResult<Option<Release>> {
-    let releases = get_releases(name, owner)?;
+    let releases = match release_type {
+        ReleaseSourceType::GitHub => get_github_releases(name, owner)?,
+        #[cfg(feature = "axo_releases")]
+        ReleaseSourceType::Axo => get_axo_releases(name, owner)?,
+        #[cfg(not(feature = "axo_releases"))]
+        ReleaseSourceType::Axo => {
+            return Err(AxoupdateError::BackendDisabled {
+                backend: "axodotdev".to_owned(),
+            })
+        }
+    };
 
     Ok(releases.into_iter().find(|r| !r.prerelease))
 }
