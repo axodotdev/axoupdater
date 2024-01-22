@@ -1,8 +1,9 @@
-use std::process::exit;
+use axocli::{CliApp, CliAppBuilder};
+use axoupdater::AxoUpdater;
 
-use axoupdater::{AxoUpdater, AxoupdateResult};
+struct CliArgs {}
 
-fn real_main() -> AxoupdateResult<()> {
+fn real_main(_cli: &CliApp<CliArgs>) -> Result<(), miette::Report> {
     if AxoUpdater::new_for_updater_executable()?
         .load_receipt()?
         .run()?
@@ -15,12 +16,6 @@ fn real_main() -> AxoupdateResult<()> {
     Ok(())
 }
 
-fn main() -> std::io::Result<()> {
-    match real_main() {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            eprintln!("{e}");
-            exit(1)
-        }
-    }
+fn main() {
+    CliAppBuilder::new("axoupdater").start(CliArgs {}, real_main);
 }
