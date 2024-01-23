@@ -56,7 +56,7 @@ impl AxoUpdater {
         };
 
         // Happens if the binary didn't get renamed properly
-        if app_name == "axoupdate" {
+        if app_name == "axoupdater" {
             return Err(AxoupdateError::UpdateSelf {});
         };
 
@@ -246,7 +246,7 @@ pub enum AxoupdateError {
     #[error("No releases were found for the app {app_name} in workspace {name}")]
     ReleaseNotFound { name: String, app_name: String },
 
-    #[error("App name calculated as `axoupdate'")]
+    #[error("App name calculated as `axoupdater'")]
     #[diagnostic(help(
         "This probably isn't what you meant to update; was the updater installed correctly?"
     ))]
