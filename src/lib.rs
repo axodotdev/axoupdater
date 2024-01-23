@@ -9,6 +9,7 @@ use camino::Utf8PathBuf;
 #[cfg(feature = "axo_releases")]
 use gazenot::{error::GazenotError, Gazenot};
 use miette::Diagnostic;
+#[cfg(feature = "github_releases")]
 use reqwest::{
     self,
     header::{ACCEPT, USER_AGENT},
@@ -321,6 +322,7 @@ pub struct InstallReceipt {
     pub version: String,
 }
 
+#[cfg(feature = "github_releases")]
 pub fn get_github_releases(name: &String, owner: &String) -> AxoupdateResult<Vec<Release>> {
     let client = reqwest::blocking::Client::new();
     let resp: Vec<Release> = client
@@ -365,7 +367,14 @@ pub fn get_latest_stable_release(
     release_type: &ReleaseSourceType,
 ) -> AxoupdateResult<Option<Release>> {
     let releases = match release_type {
+        #[cfg(feature = "github_releases")]
         ReleaseSourceType::GitHub => get_github_releases(name, owner)?,
+        #[cfg(not(feature = "github_releases"))]
+        ReleaseSourceType::GitHub => {
+            return Err(AxoupdateError::BackendDisabled {
+                backend: "github".to_owned(),
+            })
+        }
         #[cfg(feature = "axo_releases")]
         ReleaseSourceType::Axo => get_axo_releases(name, owner)?,
         #[cfg(not(feature = "axo_releases"))]
