@@ -173,8 +173,12 @@ impl AxoUpdater {
             });
         };
 
-        let Some(release) =
-            get_latest_stable_release(&source.name, &source.owner, &source.release_type)?
+        let Some(release) = get_latest_stable_release(
+            &source.name,
+            &source.owner,
+            &source.app_name,
+            &source.release_type,
+        )?
         else {
             return Err(AxoupdateError::NoStableReleases {
                 app_name: app_name.to_owned(),
@@ -239,8 +243,8 @@ pub enum AxoupdateError {
     #[error("There are no stable releases available for {app_name}")]
     NoStableReleases { app_name: String },
 
-    #[error("No releases were found for the app {app_name}")]
-    ReleaseNotFound { app_name: String },
+    #[error("No releases were found for the app {app_name} in workspace {name}")]
+    ReleaseNotFound { name: String, app_name: String },
 
     #[error("App name calculated as `axoupdate'")]
     #[diagnostic(help(
@@ -312,6 +316,7 @@ pub struct ReleaseSource {
     pub release_type: ReleaseSourceType,
     pub owner: String,
     pub name: String,
+    pub app_name: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -323,7 +328,11 @@ pub struct InstallReceipt {
 }
 
 #[cfg(feature = "github_releases")]
-pub fn get_github_releases(name: &String, owner: &String) -> AxoupdateResult<Vec<Release>> {
+pub fn get_github_releases(
+    name: &String,
+    owner: &String,
+    app_name: &String,
+) -> AxoupdateResult<Vec<Release>> {
     let client = reqwest::blocking::Client::new();
     let resp: Vec<Release> = client
         .get(format!("{GITHUB_API}/repos/{owner}/{name}/releases"))
@@ -335,11 +344,22 @@ pub fn get_github_releases(name: &String, owner: &String) -> AxoupdateResult<Vec
         .send()?
         .json()?;
 
-    Ok(resp)
+    Ok(resp
+        .into_iter()
+        .filter(|r| {
+            r.assets
+                .iter()
+                .any(|asset| asset.name.starts_with(&format!("{app_name}-installer")))
+        })
+        .collect())
 }
 
 #[cfg(feature = "axo_releases")]
-pub fn get_axo_releases(name: &String, owner: &String) -> AxoupdateResult<Vec<Release>> {
+pub fn get_axo_releases(
+    name: &String,
+    owner: &String,
+    app_name: &String,
+) -> AxoupdateResult<Vec<Release>> {
     let abyss = Gazenot::new_unauthed("github".to_string(), owner)?;
     let release_lists = tokio::runtime::Builder::new_current_thread()
         .worker_threads(1)
@@ -347,10 +367,11 @@ pub fn get_axo_releases(name: &String, owner: &String) -> AxoupdateResult<Vec<Re
         .enable_all()
         .build()
         .expect("Initializing tokio runtime failed")
-        .block_on(abyss.list_releases_many(vec![name.to_owned()]))?;
-    let Some(our_release) = release_lists.iter().find(|rl| &rl.package_name == name) else {
+        .block_on(abyss.list_releases_many(vec![app_name.to_owned()]))?;
+    let Some(our_release) = release_lists.iter().find(|rl| &rl.package_name == app_name) else {
         return Err(AxoupdateError::ReleaseNotFound {
-            app_name: name.to_owned(),
+            name: name.to_owned(),
+            app_name: app_name.to_owned(),
         });
     };
 
@@ -364,11 +385,12 @@ pub fn get_axo_releases(name: &String, owner: &String) -> AxoupdateResult<Vec<Re
 pub fn get_latest_stable_release(
     name: &String,
     owner: &String,
+    app_name: &String,
     release_type: &ReleaseSourceType,
 ) -> AxoupdateResult<Option<Release>> {
     let releases = match release_type {
         #[cfg(feature = "github_releases")]
-        ReleaseSourceType::GitHub => get_github_releases(name, owner)?,
+        ReleaseSourceType::GitHub => get_github_releases(name, owner, app_name)?,
         #[cfg(not(feature = "github_releases"))]
         ReleaseSourceType::GitHub => {
             return Err(AxoupdateError::BackendDisabled {
@@ -376,7 +398,7 @@ pub fn get_latest_stable_release(
             })
         }
         #[cfg(feature = "axo_releases")]
-        ReleaseSourceType::Axo => get_axo_releases(name, owner)?,
+        ReleaseSourceType::Axo => get_axo_releases(name, owner, app_name)?,
         #[cfg(not(feature = "axo_releases"))]
         ReleaseSourceType::Axo => {
             return Err(AxoupdateError::BackendDisabled {
