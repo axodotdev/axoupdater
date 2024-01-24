@@ -411,8 +411,8 @@ pub fn get_latest_stable_release(
 }
 
 pub fn get_app_name() -> Option<String> {
-    if cfg!(debug_assertions) {
-        Some("cargo-dist".to_owned())
+    if let Ok(name) = env::var("AXOUPDATER_APP_NAME") {
+        Some(name)
     } else if let Some(path) = args().next() {
         Utf8PathBuf::from(&path)
             .file_name()
@@ -425,7 +425,7 @@ pub fn get_app_name() -> Option<String> {
 }
 
 pub fn get_config_path(app_name: &String) -> AxoupdateResult<Utf8PathBuf> {
-    if cfg!(debug_assertions) {
+    if env::var("AXOUPDATER_CONFIG_WORKING_DIR").is_ok() {
         Ok(Utf8PathBuf::try_from(current_dir()?)?)
     } else {
         let Some(home) = homedir::get_my_home()? else {
