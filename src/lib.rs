@@ -1,4 +1,7 @@
-use std::env::{self, args, current_dir};
+use std::{
+    env::{self, args, current_dir},
+    path::PathBuf,
+};
 
 #[cfg(unix)]
 use std::{fs::File, os::unix::fs::PermissionsExt};
@@ -428,11 +431,16 @@ pub fn get_config_path(app_name: &String) -> AxoupdateResult<Utf8PathBuf> {
     if env::var("AXOUPDATER_CONFIG_WORKING_DIR").is_ok() {
         Ok(Utf8PathBuf::try_from(current_dir()?)?)
     } else {
-        let Some(home) = homedir::get_my_home()? else {
+        let home = if cfg!(windows) {
+            env::var("LOCALAPPDATA").map(PathBuf::from).ok()
+        } else {
+            homedir::get_my_home()?.map(|path| path.join(".config"))
+        };
+        let Some(home) = home else {
             return Err(AxoupdateError::NoHome {});
         };
 
-        Ok(Utf8PathBuf::try_from(home)?.join(".config").join(app_name))
+        Ok(Utf8PathBuf::try_from(home)?.join(app_name))
     }
 }
 
