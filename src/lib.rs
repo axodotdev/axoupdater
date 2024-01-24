@@ -140,7 +140,9 @@ impl AxoUpdater {
             return Err(AxoupdateError::NoInstallerForPackage {});
         };
 
-        let installer_path = Utf8PathBuf::try_from(tempdir.path().join("installer"))?;
+        let extension = if cfg!(windows) { ".ps1" } else { ".sh" };
+        let installer_path =
+            Utf8PathBuf::try_from(tempdir.path().join(format!("installer{extension}")))?;
 
         #[cfg(unix)]
         {
@@ -159,7 +161,16 @@ impl AxoUpdater {
 
         LocalAsset::write_new_all(&download, &installer_path)?;
 
-        Cmd::new(&installer_path, "installer").run()?;
+        let path = if cfg!(windows) {
+            "powershell"
+        } else {
+            installer_path.as_str()
+        };
+        let mut command = Cmd::new(path, "installer");
+        if cfg!(windows) {
+            command.arg(&installer_path);
+        }
+        command.run()?;
 
         Ok(true)
     }
