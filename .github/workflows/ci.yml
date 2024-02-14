@@ -1,0 +1,100 @@
+# The "Normal" CI for tests and linters and whatnot
+name: Rust CI
+
+# Ci should be run on...
+on:
+  # Every pull request (will need approval for new contributors)
+  pull_request:
+  # Every push to...
+  push:
+    branches:
+      # The main branch
+      - main
+  # And once a week? 
+  # This can catch things like "rust updated and actually regressed something"
+  schedule:
+    - cron: "11 7 * * 1,4"
+
+# We want all these checks to fail if they spit out warnings
+env:
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  # Check that rustfmt is a no-op
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  # Check that clippy is appeased
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: clippy
+      - uses: swatinem/rust-cache@v2
+      - uses: actions-rs/clippy-check@v1
+        env:
+          PWD: ${{ env.GITHUB_WORKSPACE }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --workspace --tests --examples
+
+  # Make sure the docs build without warnings
+  docs:
+   runs-on: ubuntu-latest
+   env:
+     RUSTDOCFLAGS: -Dwarnings
+   steps:
+     - uses: actions/checkout@master
+     - uses: dtolnay/rust-toolchain@master
+       with:
+         toolchain: stable
+         components: rust-docs
+     - uses: swatinem/rust-cache@v2
+     - run: cargo doc --workspace --no-deps
+
+  # Build and run tests/doctests/examples on all platforms
+  # FIXME: look into `cargo-hack` which lets you more aggressively
+  # probe all your features and rust versions (see tracing's ci)
+  test:
+    runs-on: ${{ matrix.os }}
+    env:
+      # runtest the installer scripts
+      RUIN_MY_COMPUTER_WITH_INSTALLERS: true
+    strategy:
+      # Test the cross-product of these platforms+toolchains
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust: [stable]
+    steps:
+      # Setup tools
+      - uses: actions/checkout@master
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+      - uses: swatinem/rust-cache@v2
+      # Run the tests/doctests (default features)
+      - run: cargo test --workspace
+        env:
+          PWD: ${{ env.GITHUB_WORKSPACE }}
+      # Run the tests/doctests (all features)
+      - run: cargo test --workspace --all-features
+        env:
+          PWD: ${{ env.GITHUB_WORKSPACE }}
+      # Test the examples (default features)
+      - run: cargo test --workspace --examples --bins
+        env:
+          PWD: ${{ env.GITHUB_WORKSPACE }}
+      # Test the examples (all features)
+      - run: cargo test --workspace --all-features --examples --bins
+        env:
+          PWD: ${{ env.GITHUB_WORKSPACE }}
