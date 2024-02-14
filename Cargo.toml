@@ -35,7 +35,7 @@ reqwest = { version = "0.11", default-features = false, features = ["blocking", 
 
 # errors
 miette = "5.6.0"
-thiserror = "1.0.56"
+thiserror = "1.0.57"
 
 [[bin]]
 name = "axoupdater"
