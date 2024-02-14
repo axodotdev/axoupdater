@@ -28,7 +28,7 @@ temp-dir = "0.1.12"
 
 # axo releases
 gazenot = { version = "0.2.1", features = ["client_lib"], optional = true }
-tokio = { version = "1.12.0", features = ["full"], optional = true }
+tokio = { version = "1.36.0", features = ["full"], optional = true }
 
 # github releases
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "default-tls", "json"], optional = true }
