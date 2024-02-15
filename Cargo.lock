@@ -59,7 +59,7 @@ checksum = "e9959bd1b21d20e8634d0ba48621a5a988deda99bbe2a383645fc006a9feb757"
 dependencies = [
  "camino",
  "image",
- "miette",
+ "miette 5.10.0",
  "mime",
  "reqwest",
  "serde",
@@ -78,7 +78,7 @@ dependencies = [
  "backtrace",
  "backtrace-ext",
  "console",
- "miette",
+ "miette 5.10.0",
  "serde",
  "serde_json",
  "thiserror",
@@ -92,7 +92,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41498f64097d1018019acba4ffe65acf502fbbce2310945d34c3c17c2d89fb1d"
 dependencies = [
- "miette",
+ "miette 5.10.0",
  "thiserror",
  "tracing",
 ]
@@ -107,7 +107,7 @@ dependencies = [
  "camino",
  "gazenot",
  "homedir",
- "miette",
+ "miette 7.0.0",
  "reqwest",
  "serde",
  "temp-dir",
@@ -464,7 +464,7 @@ dependencies = [
  "axoasset",
  "backon",
  "camino",
- "miette",
+ "miette 5.10.0",
  "reqwest",
  "schemars",
  "serde",
@@ -783,7 +783,7 @@ dependencies = [
  "backtrace",
  "backtrace-ext",
  "is-terminal",
- "miette-derive",
+ "miette-derive 5.10.0",
  "once_cell",
  "owo-colors",
  "supports-color",
@@ -796,10 +796,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "miette"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98a72adfa0c7ae88ba0abcbd00047a476616c66b831d628b8ac7f1e9de0cfd67"
+dependencies = [
+ "miette-derive 7.0.0",
+ "thiserror",
+ "unicode-width",
+]
+
+[[package]]
 name = "miette-derive"
 version = "5.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49e7bc1560b95a3c4a25d03de42fe76ca718ab92d1a22a55b9b4cf67b3ae635c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
+]
+
+[[package]]
+name = "miette-derive"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "279def6bf114a34b3cf887489eb440d4dfcf709ab3ce9955e4a6f957ce5cce77"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1053,9 +1075,9 @@ checksum = "69d3587f8a9e599cc7ec2c00e331f71c4e69a5f9a4b8a6efd5b07466b9736f9a"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.76"
+version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95fc56cda0b5c3325f5fbbd7ff9fda9e02bb00bb3dac51252d2f1bfa1cb8cc8c"
+checksum = "e2422ad645d89c99f8f3e6b88a9fdeca7fabeac836b1002371c4367c8f984aae"
 dependencies = [
  "unicode-ident",
 ]
