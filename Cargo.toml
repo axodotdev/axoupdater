@@ -23,7 +23,7 @@ axocli = { version = "0.1.1", optional = true }
 axoprocess = "0.1.0"
 camino = { version = "1.1.6", features = ["serde1"] }
 homedir = "0.2.1"
-serde = "1.0.195"
+serde = "1.0.196"
 temp-dir = "0.1.12"
 
 # axo releases
