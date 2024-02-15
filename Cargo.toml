@@ -27,7 +27,7 @@ serde = "1.0.195"
 temp-dir = "0.1.12"
 
 # axo releases
-gazenot = { version = "0.2.1", features = ["client_lib"], optional = true }
+gazenot = { version = "0.2.3", features = ["client_lib"], optional = true }
 tokio = { version = "1.36.0", features = ["full"], optional = true }
 
 # github releases
