@@ -239,6 +239,10 @@ pub enum AxoupdateError {
     #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
     ConfigFetchFailed { app_name: String },
 
+    #[error("Unable to read installation information for app {app_name}.")]
+    #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
+    ReceiptLoadFailed { app_name: String },
+
     #[error("Unable to determine the name of the app to update")]
     #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
     NoAppName {},
@@ -472,5 +476,7 @@ fn load_receipt_for(app_name: &String) -> AxoupdateResult<InstallReceipt> {
 
     let install_receipt_path = receipt_prefix.join(format!("{app_name}-receipt.json"));
 
-    load_receipt_from_path(&install_receipt_path)
+    load_receipt_from_path(&install_receipt_path).map_err(|_| AxoupdateError::ReceiptLoadFailed {
+        app_name: app_name.to_owned(),
+    })
 }
