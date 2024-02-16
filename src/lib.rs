@@ -389,11 +389,15 @@ pub fn get_axo_releases(
         });
     };
 
-    Ok(our_release
+    let mut releases: Vec<Release> = our_release
         .releases
         .iter()
         .map(Release::from_gazenot)
-        .collect())
+        .collect();
+    // GitHub releases are sorted newest to oldest; Axo sorts oldest to newest
+    releases.reverse();
+
+    Ok(releases)
 }
 
 pub fn get_latest_stable_release(
