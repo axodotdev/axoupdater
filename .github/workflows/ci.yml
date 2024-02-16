@@ -10,7 +10,7 @@ on:
     branches:
       # The main branch
       - main
-  # And once a week? 
+  # And once a week?
   # This can catch things like "rust updated and actually regressed something"
   schedule:
     - cron: "11 7 * * 1,4"
@@ -50,17 +50,17 @@ jobs:
 
   # Make sure the docs build without warnings
   docs:
-   runs-on: ubuntu-latest
-   env:
-     RUSTDOCFLAGS: -Dwarnings
-   steps:
-     - uses: actions/checkout@master
-     - uses: dtolnay/rust-toolchain@master
-       with:
-         toolchain: stable
-         components: rust-docs
-     - uses: swatinem/rust-cache@v2
-     - run: cargo doc --workspace --no-deps
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -Dwarnings
+    steps:
+      - uses: actions/checkout@master
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: rust-docs
+      - uses: swatinem/rust-cache@v2
+      - run: cargo doc --workspace --no-deps
 
   # Build and run tests/doctests/examples on all platforms
   # FIXME: look into `cargo-hack` which lets you more aggressively
@@ -73,7 +73,7 @@ jobs:
     strategy:
       # Test the cross-product of these platforms+toolchains
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, macOS-14]
         rust: [stable]
     steps:
       # Setup tools
