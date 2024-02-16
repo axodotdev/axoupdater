@@ -4,6 +4,8 @@ use axoupdater::AxoUpdater;
 struct CliArgs {}
 
 fn real_main(_cli: &CliApp<CliArgs>) -> Result<(), miette::Report> {
+    eprintln!("Checking for updates...");
+
     if AxoUpdater::new_for_updater_executable()?
         .load_receipt()?
         .run()?
