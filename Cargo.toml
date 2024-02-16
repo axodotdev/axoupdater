@@ -40,7 +40,7 @@ reqwest = { version = "0.11", default-features = false, features = [
 ], optional = true }
 
 # errors
-miette = "7.0.0"
+miette = "7.1.0"
 thiserror = "1.0.57"
 
 [[bin]]
