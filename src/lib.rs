@@ -315,42 +315,55 @@ impl Release {
     }
 }
 
+/// Represents a specific asset inside a release.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Asset {
+    /// The URL at which this asset can be found
     pub url: String,
+    /// The URL at which this asset can be downloaded
     pub browser_download_url: String,
+    /// This asset's name
     pub name: String,
 }
 
+/// Where service this app's releases are hosted on
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ReleaseSourceType {
+    /// GitHub Releases
     GitHub,
+    /// Axo Releases
     Axo,
 }
 
+/// Information about the source of this app's releases
 #[derive(Clone, Debug, Deserialize)]
 pub struct ReleaseSource {
+    /// Which hosting service to query for new releases
     pub release_type: ReleaseSourceType,
+    /// Owner, in GitHub name-with-owner format
     pub owner: String,
+    /// Name, in GitHub name-with-owner format
     pub name: String,
+    /// The app's name; this can be distinct from the repository name above
     pub app_name: String,
 }
 
+/// Information parsed from a cargo-dist install receipt
 #[derive(Clone, Debug, Deserialize)]
 pub struct InstallReceipt {
+    /// The path this app has been installed to
     pub install_prefix: Utf8PathBuf,
+    /// A list of binaries installed by this app
     pub binaries: Vec<String>,
+    /// Information about where this release was fetched from
     pub source: ReleaseSource,
+    /// Installed version
     pub version: String,
 }
 
 #[cfg(feature = "github_releases")]
-pub fn get_github_releases(
-    name: &str,
-    owner: &str,
-    app_name: &str,
-) -> AxoupdateResult<Vec<Release>> {
+fn get_github_releases(name: &str, owner: &str, app_name: &str) -> AxoupdateResult<Vec<Release>> {
     let client = reqwest::blocking::Client::new();
     let resp: Vec<Release> = client
         .get(format!("{GITHUB_API}/repos/{owner}/{name}/releases"))
@@ -373,7 +386,7 @@ pub fn get_github_releases(
 }
 
 #[cfg(feature = "axo_releases")]
-pub fn get_axo_releases(name: &str, owner: &str, app_name: &str) -> AxoupdateResult<Vec<Release>> {
+fn get_axo_releases(name: &str, owner: &str, app_name: &str) -> AxoupdateResult<Vec<Release>> {
     let abyss = Gazenot::new_unauthed("github".to_string(), owner)?;
     let release_lists = tokio::runtime::Builder::new_current_thread()
         .worker_threads(1)
@@ -400,7 +413,7 @@ pub fn get_axo_releases(name: &str, owner: &str, app_name: &str) -> AxoupdateRes
     Ok(releases)
 }
 
-pub fn get_latest_stable_release(
+fn get_latest_stable_release(
     name: &str,
     owner: &str,
     app_name: &str,
@@ -428,7 +441,7 @@ pub fn get_latest_stable_release(
     Ok(releases.into_iter().find(|r| !r.prerelease))
 }
 
-pub fn get_app_name() -> Option<String> {
+fn get_app_name() -> Option<String> {
     if let Ok(name) = env::var("AXOUPDATER_APP_NAME") {
         Some(name)
     } else if let Some(path) = args().next() {
@@ -442,7 +455,7 @@ pub fn get_app_name() -> Option<String> {
     }
 }
 
-pub fn get_config_path(app_name: &str) -> AxoupdateResult<Utf8PathBuf> {
+fn get_config_path(app_name: &str) -> AxoupdateResult<Utf8PathBuf> {
     if env::var("AXOUPDATER_CONFIG_WORKING_DIR").is_ok() {
         Ok(Utf8PathBuf::try_from(current_dir()?)?)
     } else {
