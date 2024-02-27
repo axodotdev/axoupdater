@@ -44,7 +44,7 @@ impl AxoUpdater {
         }
     }
 
-    pub fn new_for(app_name: &String) -> AxoUpdater {
+    pub fn new_for(app_name: &str) -> AxoUpdater {
         AxoUpdater {
             name: Some(app_name.to_owned()),
             source: None,
@@ -84,7 +84,7 @@ impl AxoUpdater {
         Ok(self)
     }
 
-    pub fn set_current_version(&mut self, version: &String) -> AxoupdateResult<&mut AxoUpdater> {
+    pub fn set_current_version(&mut self, version: &str) -> AxoupdateResult<&mut AxoUpdater> {
         self.current_version = Some(version.to_owned());
 
         Ok(self)
@@ -347,9 +347,9 @@ pub struct InstallReceipt {
 
 #[cfg(feature = "github_releases")]
 pub fn get_github_releases(
-    name: &String,
-    owner: &String,
-    app_name: &String,
+    name: &str,
+    owner: &str,
+    app_name: &str,
 ) -> AxoupdateResult<Vec<Release>> {
     let client = reqwest::blocking::Client::new();
     let resp: Vec<Release> = client
@@ -373,11 +373,7 @@ pub fn get_github_releases(
 }
 
 #[cfg(feature = "axo_releases")]
-pub fn get_axo_releases(
-    name: &String,
-    owner: &String,
-    app_name: &String,
-) -> AxoupdateResult<Vec<Release>> {
+pub fn get_axo_releases(name: &str, owner: &str, app_name: &str) -> AxoupdateResult<Vec<Release>> {
     let abyss = Gazenot::new_unauthed("github".to_string(), owner)?;
     let release_lists = tokio::runtime::Builder::new_current_thread()
         .worker_threads(1)
@@ -386,7 +382,7 @@ pub fn get_axo_releases(
         .build()
         .expect("Initializing tokio runtime failed")
         .block_on(abyss.list_releases_many(vec![app_name.to_owned()]))?;
-    let Some(our_release) = release_lists.iter().find(|rl| &rl.package_name == app_name) else {
+    let Some(our_release) = release_lists.iter().find(|rl| rl.package_name == app_name) else {
         return Err(AxoupdateError::ReleaseNotFound {
             name: name.to_owned(),
             app_name: app_name.to_owned(),
@@ -405,9 +401,9 @@ pub fn get_axo_releases(
 }
 
 pub fn get_latest_stable_release(
-    name: &String,
-    owner: &String,
-    app_name: &String,
+    name: &str,
+    owner: &str,
+    app_name: &str,
     release_type: &ReleaseSourceType,
 ) -> AxoupdateResult<Option<Release>> {
     let releases = match release_type {
@@ -446,7 +442,7 @@ pub fn get_app_name() -> Option<String> {
     }
 }
 
-pub fn get_config_path(app_name: &String) -> AxoupdateResult<Utf8PathBuf> {
+pub fn get_config_path(app_name: &str) -> AxoupdateResult<Utf8PathBuf> {
     if env::var("AXOUPDATER_CONFIG_WORKING_DIR").is_ok() {
         Ok(Utf8PathBuf::try_from(current_dir()?)?)
     } else {
@@ -467,7 +463,7 @@ fn load_receipt_from_path(install_receipt_path: &Utf8PathBuf) -> AxoupdateResult
     Ok(SourceFile::load_local(install_receipt_path)?.deserialize_json()?)
 }
 
-fn load_receipt_for(app_name: &String) -> AxoupdateResult<InstallReceipt> {
+fn load_receipt_for(app_name: &str) -> AxoupdateResult<InstallReceipt> {
     let Ok(receipt_prefix) = get_config_path(app_name) else {
         return Err(AxoupdateError::ConfigFetchFailed {
             app_name: app_name.to_owned(),
