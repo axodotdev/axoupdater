@@ -1,3 +1,7 @@
+#![deny(missing_docs)]
+
+//! axoupdater crate
+
 use std::{
     env::{self, args, current_dir},
     path::PathBuf,
@@ -21,10 +25,15 @@ use serde::Deserialize;
 use temp_dir::TempDir;
 use thiserror::Error;
 
+/// Struct representing an updater process
 pub struct AxoUpdater {
+    /// The name of the program to update, if specified
     pub name: Option<String>,
+    /// Information about where updates should be fetched from
     pub source: Option<ReleaseSource>,
+    /// Information about the latest release; used to determine if an update is needed
     latest_release: Option<Release>,
+    /// The current version number
     current_version: Option<String>,
 }
 
@@ -35,6 +44,9 @@ impl Default for AxoUpdater {
 }
 
 impl AxoUpdater {
+    /// Creates a new, empty AxoUpdater struct. This struct lacks information
+    /// necessary to perform the update, so at least the name and source fields
+    /// will need to be filled in before the update can run.
     pub fn new() -> AxoUpdater {
         AxoUpdater {
             name: None,
@@ -44,6 +56,7 @@ impl AxoUpdater {
         }
     }
 
+    /// Creates a new AxoUpdater struct with an explicitly-specified name.
     pub fn new_for(app_name: &str) -> AxoUpdater {
         AxoUpdater {
             name: Some(app_name.to_owned()),
@@ -53,6 +66,9 @@ impl AxoUpdater {
         }
     }
 
+    /// Creates a new AxoUpdater struct by attempting to autodetect the name
+    /// of the current executable. This is only meant to be used by standalone
+    /// updaters, not when this crate is used as a library in another program.
     pub fn new_for_updater_executable() -> AxoupdateResult<AxoUpdater> {
         let Some(app_name) = get_app_name() else {
             return Err(AxoupdateError::NoAppName {});
@@ -71,6 +87,11 @@ impl AxoUpdater {
         })
     }
 
+    /// Attempts to load an install receipt in order to prepare for an update.
+    /// If present and valid, the install receipt is used to populate the
+    /// `source` and `current_version` fields.
+    /// Shell and Powershell installers produced by cargo-dist since 0.9.0
+    /// will have created an install receipt.
     pub fn load_receipt(&mut self) -> AxoupdateResult<&mut AxoUpdater> {
         let Some(app_name) = &self.name else {
             return Err(AxoupdateError::NoAppNamePassed {});
@@ -84,12 +105,19 @@ impl AxoUpdater {
         Ok(self)
     }
 
+    /// Explicitly specifies the current version.
     pub fn set_current_version(&mut self, version: &str) -> AxoupdateResult<&mut AxoUpdater> {
         self.current_version = Some(version.to_owned());
 
         Ok(self)
     }
 
+    /// Determines if an update is needed by querying the newest version from
+    /// the location specified in `source`.
+    /// This includes a blocking network call, so it may be slow.
+    /// This can only be performed if the `current_version` field has been
+    /// set, either by loading the install receipt or by specifying it using
+    /// `set_current_version`.
     pub fn is_update_needed(&mut self) -> AxoupdateResult<bool> {
         let Some(current_version) = self.current_version.to_owned() else {
             return Err(AxoupdateError::NotConfigured {
@@ -108,6 +136,10 @@ impl AxoUpdater {
         Ok(current_version != release.version())
     }
 
+    /// Attempts to perform an update. The return value specifies whether an
+    /// update was actually performed or not; false indicates "no update was
+    /// needed", while an error indicates that an update couldn't be performed
+    /// due to an error.
     pub fn run(&mut self) -> AxoupdateResult<bool> {
         if !self.is_update_needed()? {
             return Ok(false);
@@ -205,88 +237,143 @@ impl AxoUpdater {
     }
 }
 
+/// An alias for Result<T, AxoupdateError>
 pub type AxoupdateResult<T> = std::result::Result<T, AxoupdateError>;
 
+/// An enum representing all of this crate's errors
 #[derive(Debug, Error, Diagnostic)]
 pub enum AxoupdateError {
+    /// Passed through from Reqwest
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
 
+    /// Passed through from std::io::Error
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
+    /// Passed through from Camino
     #[error(transparent)]
     CaminoPathBuf(#[from] camino::FromPathBufError),
 
+    /// Passed through from homedir
     #[error(transparent)]
     Homedir(#[from] homedir::GetHomeError),
 
+    /// Passed through from axoasset
     #[error(transparent)]
     Axoasset(#[from] AxoassetError),
 
+    /// Passed through from axoprocess
     #[error(transparent)]
     Axoprocess(#[from] AxoprocessError),
 
+    /// Passed through from gazenot
     #[cfg(feature = "axo_releases")]
     #[error(transparent)]
     Gazenot(#[from] GazenotError),
 
+    /// Indicates that the only updates available are located at a source
+    /// this crate isn't configured to support. This is returned if the
+    /// appropriate source is disabled via features.
     #[error("Release is located on backend {backend}, but it's not enabled")]
     #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
-    BackendDisabled { backend: String },
+    BackendDisabled {
+        /// The name of the backend
+        backend: String,
+    },
 
+    /// Indicates that axoupdater wasn't able to determine the config file path
+    /// for this app. This path is where install receipts are located.
     #[error("Unable to determine config file path for app {app_name}!")]
     #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
-    ConfigFetchFailed { app_name: String },
+    ConfigFetchFailed {
+        /// This app's name
+        app_name: String,
+    },
 
+    /// Indicates that the install receipt for this app couldn't be read.
     #[error("Unable to read installation information for app {app_name}.")]
     #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
-    ReceiptLoadFailed { app_name: String },
+    ReceiptLoadFailed {
+        /// This app's name
+        app_name: String,
+    },
 
+    /// Indicates that this app's name couldn't be determined when trying
+    /// to autodetect it.
     #[error("Unable to determine the name of the app to update")]
     #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
     NoAppName {},
 
+    /// Indicates that no app name was specified before the updater process began.
     #[error("No app name was configured for this updater")]
     #[diagnostic(help("This isn't your fault; please open an issue!"))]
     NoAppNamePassed {},
 
+    /// Indicates that the home directory couldn't be determined.
     #[error("Unable to fetch your home directory")]
     #[diagnostic(help("This may not be your fault; please open an issue!"))]
     NoHome {},
 
+    /// Indicates that no installer is available for this OS when looking up
+    /// the latest release.
     #[error("Unable to find an installer for your OS")]
     NoInstallerForPackage {},
 
+    /// Indicates that no stable releases exist for the app being updated.
     #[error("There are no stable releases available for {app_name}")]
-    NoStableReleases { app_name: String },
+    NoStableReleases {
+        /// This app's name
+        app_name: String,
+    },
 
+    /// Indicates that no releases exist for this app at all.
     #[error("No releases were found for the app {app_name} in workspace {name}")]
-    ReleaseNotFound { name: String, app_name: String },
+    ReleaseNotFound {
+        /// The workspace's name
+        name: String,
+        /// This app's name
+        app_name: String,
+    },
 
+    /// This error catches an edge case where the axoupdater executable was run
+    /// under its default filename, "axoupdater", instead of being installed
+    /// under an app-specific name.
     #[error("App name calculated as `axoupdater'")]
     #[diagnostic(help(
         "This probably isn't what you meant to update; was the updater installed correctly?"
     ))]
     UpdateSelf {},
 
+    /// Indicates that a mandatory config field wasn't specified before the
+    /// update process ran.
     #[error("The updater isn't properly configured")]
     #[diagnostic(help("Missing configuration value for {}", missing_field))]
-    NotConfigured { missing_field: String },
+    NotConfigured {
+        /// The name of the missing field
+        missing_field: String,
+    },
 }
 
 const GITHUB_API: &str = "https://api.github.com";
 
+/// A struct representing a specific release, either from GitHub or Axo Releases.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Release {
+    /// The tag this release represents
     pub tag_name: String,
+    /// The name of the release
     pub name: String,
+    /// The URL at which this release lists
     pub url: String,
+    /// All assets associated with this release
     pub assets: Vec<Asset>,
+    /// Whether or not this release is a prerelease
     pub prerelease: bool,
 }
 
 impl Release {
+    /// Returns the version, with leading `v` stripped if appropriate.
     pub fn version(&self) -> String {
         if let Some(stripped) = self.tag_name.strip_prefix('v') {
             stripped.to_owned()
@@ -295,6 +382,7 @@ impl Release {
         }
     }
 
+    /// Constructs a release from Axo Releases data fetched via gazenot.
     #[cfg(feature = "axo_releases")]
     pub fn from_gazenot(release: &gazenot::PublicRelease) -> Release {
         Release {
