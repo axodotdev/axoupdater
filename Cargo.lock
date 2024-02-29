@@ -119,7 +119,6 @@ name = "axoupdater"
 version = "0.1.0"
 dependencies = [
  "axoasset 0.7.0",
- "axocli",
  "axoprocess",
  "camino",
  "gazenot",
@@ -130,6 +129,15 @@ dependencies = [
  "temp-dir",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "axoupdater-cli"
+version = "0.1.0"
+dependencies = [
+ "axocli",
+ "axoupdater",
+ "miette 7.1.0",
 ]
 
 [[package]]

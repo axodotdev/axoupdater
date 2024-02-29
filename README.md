@@ -40,8 +40,8 @@ By default, axoupdater is built with support for both GitHub and Axo releases. I
 
 To build as a standalone binary, follow these steps:
 
-* Run `cargo build --release --features=axocli`
-* Rename `target/release/axoupdater` to `APPNAME-update`, where `APPNAME` is the name of the app you want it to upgrade.
+- Run `cargo build --release`
+- Rename `target/release/axoupdater` to `APPNAME-update`, where `APPNAME` is the name of the app you want it to upgrade.
 
 ## License
 

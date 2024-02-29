@@ -1,0 +1,44 @@
+[package]
+name = "axoupdater"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "../README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "axoupdater"
+path = "src/lib.rs"
+
+[features]
+default = ["axo_releases", "github_releases"]
+axo_releases = ["gazenot", "tokio"]
+github_releases = ["reqwest"]
+
+[dependencies]
+axoasset = { version = "0.7.0", default-features = false, features = [
+    "json-serde",
+] }
+axoprocess = "0.2.0"
+camino = { version = "1.1.6", features = ["serde1"] }
+homedir = "0.2.1"
+serde = "1.0.197"
+temp-dir = "0.1.12"
+
+# axo releases
+gazenot = { version = "0.3.0", features = ["client_lib"], optional = true }
+tokio = { version = "1.36.0", features = ["full"], optional = true }
+
+# github releases
+reqwest = { version = "0.11", default-features = false, features = [
+    "blocking",
+    "rustls-tls",
+    "json",
+], optional = true }
+
+# errors
+miette = "7.1.0"
+thiserror = "1.0.57"
