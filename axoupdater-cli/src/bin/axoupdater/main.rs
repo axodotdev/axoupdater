@@ -8,7 +8,7 @@ fn real_main(_cli: &CliApp<CliArgs>) -> Result<(), miette::Report> {
 
     if AxoUpdater::new_for_updater_executable()?
         .load_receipt()?
-        .run()?
+        .run_sync()?
     {
         eprintln!("New release installed!")
     } else {

@@ -17,7 +17,7 @@ axoupdater can also be used as a library within your own applications in order t
 To check for updates and notify the user:
 
 ```rust
-if AxoUpdater::new_for("axolotlsay").load_receipt()?.is_update_needed()? {
+if AxoUpdater::new_for("axolotlsay").load_receipt()?.is_update_needed_sync()? {
     eprintln!("axolotlsay is outdated; please upgrade!");
 }
 ```
@@ -25,7 +25,17 @@ if AxoUpdater::new_for("axolotlsay").load_receipt()?.is_update_needed()? {
 To automatically perform an update if the program isn't up to date:
 
 ```rust
-if AxoUpdater::new_for("axolotlsay").load_receipt()?.run()? {
+if AxoUpdater::new_for("axolotlsay").load_receipt()?.run_sync()? {
+    eprintln!("Update installed!");
+} else {
+    eprintln!("axolotlsay already up to date");
+}
+```
+
+Asynchronous versions of `is_update_needed()` and `run()` are also provided:
+
+```rust
+if AxoUpdater::new_for("axolotlsay").load_receipt()?.run().await? {
     eprintln!("Update installed!");
 } else {
     eprintln!("axolotlsay already up to date");
@@ -47,7 +57,7 @@ To build as a standalone binary, follow these steps:
 
 Licensed under either of
 
-* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or [apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0))
-* MIT license ([LICENSE-MIT](LICENSE-MIT) or [opensource.org/licenses/MIT](https://opensource.org/licenses/MIT))
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or [apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0))
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or [opensource.org/licenses/MIT](https://opensource.org/licenses/MIT))
 
 at your option.
