@@ -32,7 +32,7 @@ if AxoUpdater::new_for("axolotlsay").load_receipt()?.run_sync()? {
 }
 ```
 
-Asynchronous versions of `is_update_needed()` and `run()` are also provided:
+To use the blocking versions of the methods, make sure to enable the `"blocking"` feature on this dependency in your `Cargo.toml`. Asynchronous versions of `is_update_needed()` and `run()` are also provided:
 
 ```rust
 if AxoUpdater::new_for("axolotlsay").load_receipt()?.run().await? {
