@@ -118,7 +118,7 @@ impl AxoUpdater {
     /// This can only be performed if the `current_version` field has been
     /// set, either by loading the install receipt or by specifying it using
     /// `set_current_version`.
-    pub fn is_update_needed(&mut self) -> AxoupdateResult<bool> {
+    pub async fn is_update_needed(&mut self) -> AxoupdateResult<bool> {
         let Some(current_version) = self.current_version.to_owned() else {
             return Err(AxoupdateError::NotConfigured {
                 missing_field: "current_version".to_owned(),
@@ -128,7 +128,7 @@ impl AxoUpdater {
         let release = match &self.latest_release {
             Some(r) => r,
             None => {
-                self.fetch_latest_release()?;
+                self.fetch_latest_release().await?;
                 self.latest_release.as_ref().unwrap()
             }
         };
@@ -136,19 +136,30 @@ impl AxoUpdater {
         Ok(current_version != release.version())
     }
 
+    /// Identical to Axoupdater::is_update_needed(), but performed synchronously.
+    pub fn is_update_needed_sync(&mut self) -> AxoupdateResult<bool> {
+        tokio::runtime::Builder::new_current_thread()
+            .worker_threads(1)
+            .max_blocking_threads(128)
+            .enable_all()
+            .build()
+            .expect("Initializing tokio runtime failed")
+            .block_on(self.is_update_needed())
+    }
+
     /// Attempts to perform an update. The return value specifies whether an
     /// update was actually performed or not; false indicates "no update was
     /// needed", while an error indicates that an update couldn't be performed
     /// due to an error.
-    pub fn run(&mut self) -> AxoupdateResult<bool> {
-        if !self.is_update_needed()? {
+    pub async fn run(&mut self) -> AxoupdateResult<bool> {
+        if !self.is_update_needed().await? {
             return Ok(false);
         }
 
         let release = match &self.latest_release {
             Some(r) => r,
             None => {
-                self.fetch_latest_release()?;
+                self.fetch_latest_release().await?;
                 self.latest_release.as_ref().unwrap()
             }
         };
@@ -184,12 +195,14 @@ impl AxoUpdater {
             installer_file.set_permissions(perms)?;
         }
 
-        let client = reqwest::blocking::Client::new();
+        let client = reqwest::Client::new();
         let download = client
             .get(&installer_url.browser_download_url)
             .header(ACCEPT, "application/octet-stream")
-            .send()?
-            .text()?;
+            .send()
+            .await?
+            .text()
+            .await?;
 
         LocalAsset::write_new_all(&download, &installer_path)?;
 
@@ -207,7 +220,18 @@ impl AxoUpdater {
         Ok(true)
     }
 
-    fn fetch_latest_release(&mut self) -> AxoupdateResult<()> {
+    /// Identical to Axoupdater::run(), but performed synchronously.
+    pub fn run_sync(&mut self) -> AxoupdateResult<bool> {
+        tokio::runtime::Builder::new_current_thread()
+            .worker_threads(1)
+            .max_blocking_threads(128)
+            .enable_all()
+            .build()
+            .expect("Initializing tokio runtime failed")
+            .block_on(self.run())
+    }
+
+    async fn fetch_latest_release(&mut self) -> AxoupdateResult<()> {
         let Some(app_name) = &self.name else {
             return Err(AxoupdateError::NotConfigured {
                 missing_field: "app_name".to_owned(),
@@ -224,7 +248,8 @@ impl AxoUpdater {
             &source.owner,
             &source.app_name,
             &source.release_type,
-        )?
+        )
+        .await?
         else {
             return Err(AxoupdateError::NoStableReleases {
                 app_name: app_name.to_owned(),
@@ -451,8 +476,12 @@ pub struct InstallReceipt {
 }
 
 #[cfg(feature = "github_releases")]
-fn get_github_releases(name: &str, owner: &str, app_name: &str) -> AxoupdateResult<Vec<Release>> {
-    let client = reqwest::blocking::Client::new();
+async fn get_github_releases(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+) -> AxoupdateResult<Vec<Release>> {
+    let client = reqwest::Client::new();
     let resp: Vec<Release> = client
         .get(format!("{GITHUB_API}/repos/{owner}/{name}/releases"))
         .header(ACCEPT, "application/json")
@@ -460,8 +489,10 @@ fn get_github_releases(name: &str, owner: &str, app_name: &str) -> AxoupdateResu
             USER_AGENT,
             format!("axoupdate/{}", env!("CARGO_PKG_VERSION")),
         )
-        .send()?
-        .json()?;
+        .send()
+        .await?
+        .json()
+        .await?;
 
     Ok(resp
         .into_iter()
@@ -474,15 +505,13 @@ fn get_github_releases(name: &str, owner: &str, app_name: &str) -> AxoupdateResu
 }
 
 #[cfg(feature = "axo_releases")]
-fn get_axo_releases(name: &str, owner: &str, app_name: &str) -> AxoupdateResult<Vec<Release>> {
+async fn get_axo_releases(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+) -> AxoupdateResult<Vec<Release>> {
     let abyss = Gazenot::new_unauthed("github".to_string(), owner)?;
-    let release_lists = tokio::runtime::Builder::new_current_thread()
-        .worker_threads(1)
-        .max_blocking_threads(128)
-        .enable_all()
-        .build()
-        .expect("Initializing tokio runtime failed")
-        .block_on(abyss.list_releases_many(vec![app_name.to_owned()]))?;
+    let release_lists = abyss.list_releases_many(vec![app_name.to_owned()]).await?;
     let Some(our_release) = release_lists.iter().find(|rl| rl.package_name == app_name) else {
         return Err(AxoupdateError::ReleaseNotFound {
             name: name.to_owned(),
@@ -501,7 +530,7 @@ fn get_axo_releases(name: &str, owner: &str, app_name: &str) -> AxoupdateResult<
     Ok(releases)
 }
 
-fn get_latest_stable_release(
+async fn get_latest_stable_release(
     name: &str,
     owner: &str,
     app_name: &str,
@@ -509,7 +538,7 @@ fn get_latest_stable_release(
 ) -> AxoupdateResult<Option<Release>> {
     let releases = match release_type {
         #[cfg(feature = "github_releases")]
-        ReleaseSourceType::GitHub => get_github_releases(name, owner, app_name)?,
+        ReleaseSourceType::GitHub => get_github_releases(name, owner, app_name).await?,
         #[cfg(not(feature = "github_releases"))]
         ReleaseSourceType::GitHub => {
             return Err(AxoupdateError::BackendDisabled {
@@ -517,7 +546,7 @@ fn get_latest_stable_release(
             })
         }
         #[cfg(feature = "axo_releases")]
-        ReleaseSourceType::Axo => get_axo_releases(name, owner, app_name)?,
+        ReleaseSourceType::Axo => get_axo_releases(name, owner, app_name).await?,
         #[cfg(not(feature = "axo_releases"))]
         ReleaseSourceType::Axo => {
             return Err(AxoupdateError::BackendDisabled {
