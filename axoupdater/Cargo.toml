@@ -16,7 +16,7 @@ path = "src/lib.rs"
 
 [features]
 default = ["axo_releases", "github_releases"]
-axo_releases = ["gazenot", "tokio"]
+axo_releases = ["gazenot"]
 blocking = ["tokio"]
 github_releases = ["reqwest"]
 
@@ -32,13 +32,15 @@ temp-dir = "0.1.12"
 
 # axo releases
 gazenot = { version = "0.3.0", features = ["client_lib"], optional = true }
-tokio = { version = "1.36.0", features = ["full"], optional = true }
 
 # github releases
 reqwest = { version = "0.11", default-features = false, features = [
     "rustls-tls",
     "json",
 ], optional = true }
+
+# blocking API
+tokio = { version = "1.36.0", features = ["full"], optional = true }
 
 # errors
 miette = "7.1.0"

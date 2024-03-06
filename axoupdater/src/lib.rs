@@ -136,6 +136,7 @@ impl AxoUpdater {
         Ok(current_version != release.version())
     }
 
+    #[cfg(feature = "blocking")]
     /// Identical to Axoupdater::is_update_needed(), but performed synchronously.
     pub fn is_update_needed_sync(&mut self) -> AxoupdateResult<bool> {
         tokio::runtime::Builder::new_current_thread()
@@ -220,6 +221,7 @@ impl AxoUpdater {
         Ok(true)
     }
 
+    #[cfg(feature = "blocking")]
     /// Identical to Axoupdater::run(), but performed synchronously.
     pub fn run_sync(&mut self) -> AxoupdateResult<bool> {
         tokio::runtime::Builder::new_current_thread()
