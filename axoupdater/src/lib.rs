@@ -25,6 +25,16 @@ use serde::Deserialize;
 use temp_dir::TempDir;
 use thiserror::Error;
 
+/// Provides information about the result of the upgrade operation
+pub struct UpdateResult {
+    /// The old version (pre-upgrade)
+    pub old_version: String,
+    /// The new version (post-upgrade)
+    pub new_version: String,
+    /// The tag the new version was created from
+    pub new_version_tag: String,
+}
+
 /// Struct representing an updater process
 pub struct AxoUpdater {
     /// The name of the program to update, if specified
@@ -152,9 +162,9 @@ impl AxoUpdater {
     /// update was actually performed or not; false indicates "no update was
     /// needed", while an error indicates that an update couldn't be performed
     /// due to an error.
-    pub async fn run(&mut self) -> AxoupdateResult<bool> {
+    pub async fn run(&mut self) -> AxoupdateResult<Option<UpdateResult>> {
         if !self.is_update_needed().await? {
-            return Ok(false);
+            return Ok(None);
         }
 
         let release = match &self.latest_release {
@@ -218,12 +228,21 @@ impl AxoUpdater {
         }
         command.run()?;
 
-        Ok(true)
+        let result = UpdateResult {
+            old_version: self
+                .current_version
+                .to_owned()
+                .unwrap_or("unable to determine".to_owned()),
+            new_version: release.version(),
+            new_version_tag: release.tag_name.to_owned(),
+        };
+
+        Ok(Some(result))
     }
 
     #[cfg(feature = "blocking")]
     /// Identical to Axoupdater::run(), but performed synchronously.
-    pub fn run_sync(&mut self) -> AxoupdateResult<bool> {
+    pub fn run_sync(&mut self) -> AxoupdateResult<Option<UpdateResult>> {
         tokio::runtime::Builder::new_current_thread()
             .worker_threads(1)
             .max_blocking_threads(128)
