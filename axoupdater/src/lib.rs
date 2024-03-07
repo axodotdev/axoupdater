@@ -5,6 +5,7 @@
 use std::{
     env::{self, args, current_dir},
     path::PathBuf,
+    process::Stdio,
 };
 
 #[cfg(unix)]
@@ -45,6 +46,10 @@ pub struct AxoUpdater {
     latest_release: Option<Release>,
     /// The current version number
     current_version: Option<String>,
+    /// Whether to display the underlying installer's stdout
+    print_installer_stdout: bool,
+    /// Whether to display the underlying installer's stderr
+    print_installer_stderr: bool,
 }
 
 impl Default for AxoUpdater {
@@ -63,6 +68,8 @@ impl AxoUpdater {
             source: None,
             latest_release: None,
             current_version: None,
+            print_installer_stdout: true,
+            print_installer_stderr: true,
         }
     }
 
@@ -73,6 +80,8 @@ impl AxoUpdater {
             source: None,
             latest_release: None,
             current_version: None,
+            print_installer_stdout: true,
+            print_installer_stderr: true,
         }
     }
 
@@ -94,6 +103,8 @@ impl AxoUpdater {
             source: None,
             latest_release: None,
             current_version: None,
+            print_installer_stdout: true,
+            print_installer_stderr: true,
         })
     }
 
@@ -120,6 +131,50 @@ impl AxoUpdater {
         self.current_version = Some(version.to_owned());
 
         Ok(self)
+    }
+
+    /// Enables printing the underlying installer's stdout.
+    pub fn enable_installer_stdout(&mut self) -> &mut AxoUpdater {
+        self.print_installer_stdout = true;
+
+        self
+    }
+
+    /// Disables printing the underlying installer's stdout.
+    pub fn disable_installer_stdout(&mut self) -> &mut AxoUpdater {
+        self.print_installer_stdout = false;
+
+        self
+    }
+
+    /// Enables printing the underlying installer's stderr.
+    pub fn enable_installer_stderr(&mut self) -> &mut AxoUpdater {
+        self.print_installer_stderr = true;
+
+        self
+    }
+
+    /// Disables printing the underlying installer's stderr.
+    pub fn disable_installer_stderr(&mut self) -> &mut AxoUpdater {
+        self.print_installer_stderr = false;
+
+        self
+    }
+
+    /// Enables all output for the underlying installer.
+    pub fn enable_installer_output(&mut self) -> &mut AxoUpdater {
+        self.print_installer_stdout = true;
+        self.print_installer_stderr = true;
+
+        self
+    }
+
+    /// Disables all output for the underlying installer.
+    pub fn disable_installer_output(&mut self) -> &mut AxoUpdater {
+        self.print_installer_stdout = false;
+        self.print_installer_stderr = false;
+
+        self
     }
 
     /// Determines if an update is needed by querying the newest version from
@@ -225,6 +280,12 @@ impl AxoUpdater {
         let mut command = Cmd::new(path, "installer");
         if cfg!(windows) {
             command.arg(&installer_path);
+        }
+        if !self.print_installer_stdout {
+            command.stdout(Stdio::null());
+        }
+        if !self.print_installer_stderr {
+            command.stderr(Stdio::null());
         }
         command.run()?;
 
