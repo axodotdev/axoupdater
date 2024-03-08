@@ -15,7 +15,7 @@ axocli = "0.2.0"
 axoupdater = { version = "=0.3.0", path = "../axoupdater", features = ["blocking"] }
 
 # errors
-miette = "7.1.0"
+miette = "7.2.0"
 
 [[bin]]
 name = "axoupdater"
