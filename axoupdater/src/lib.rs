@@ -3,7 +3,7 @@
 //! axoupdater crate
 
 use std::{
-    env::{self, args, current_dir},
+    env::{self, args, current_dir, current_exe},
     path::PathBuf,
     process::Stdio,
 };
@@ -46,6 +46,8 @@ pub struct AxoUpdater {
     latest_release: Option<Release>,
     /// The current version number
     current_version: Option<String>,
+    /// Information about the install prefix of the previous version
+    install_prefix: Option<Utf8PathBuf>,
     /// Whether to display the underlying installer's stdout
     print_installer_stdout: bool,
     /// Whether to display the underlying installer's stderr
@@ -68,6 +70,7 @@ impl AxoUpdater {
             source: None,
             latest_release: None,
             current_version: None,
+            install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
         }
@@ -80,6 +83,7 @@ impl AxoUpdater {
             source: None,
             latest_release: None,
             current_version: None,
+            install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
         }
@@ -103,6 +107,7 @@ impl AxoUpdater {
             source: None,
             latest_release: None,
             current_version: None,
+            install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
         })
@@ -122,6 +127,7 @@ impl AxoUpdater {
 
         self.source = Some(receipt.source.clone());
         self.current_version = Some(receipt.version.to_owned());
+        self.install_prefix = Some(receipt.install_prefix.to_owned());
 
         Ok(self)
     }
@@ -177,13 +183,65 @@ impl AxoUpdater {
         self
     }
 
+    /// Checks to see if the loaded install receipt is for this executable.
+    /// Used to guard against cases where the running EXE is from a package
+    /// manager, but a receipt from a shell installed-copy is present on the
+    /// system.
+    /// Returns an error if the receipt hasn't been loaded yet.
+    pub fn check_receipt_is_for_this_executable(&self) -> AxoupdateResult<bool> {
+        let Some(install_prefix) = &self.install_prefix else {
+            return Err(AxoupdateError::NotConfigured {
+                missing_field: "install_prefix".to_owned(),
+            });
+        };
+
+        let current_exe_path = Utf8PathBuf::from_path_buf(current_exe()?.canonicalize()?)
+            .map_err(|path| AxoupdateError::CaminoConversionFailed { path })?;
+        // First determine the parent dir
+        let mut current_exe_root = if let Some(parent) = current_exe_path.parent() {
+            parent.to_path_buf()
+        } else {
+            current_exe_path
+        };
+        // If the parent dir is a "bin" dir, strip it to get the true root
+        if current_exe_root.file_name() == Some("bin") {
+            if let Some(parent) = current_exe_root.parent() {
+                current_exe_root = parent.to_path_buf();
+            }
+        }
+
+        let mut install_root = install_prefix.to_owned();
+        if install_root.file_name() == Some("bin") {
+            if let Some(parent) = install_root.parent() {
+                install_root = parent.to_path_buf();
+            }
+        }
+
+        // Looks like this EXE comes from a different source than the install
+        // receipt
+        if current_exe_root != install_root {
+            return Ok(false);
+        }
+
+        Ok(true)
+    }
+
     /// Determines if an update is needed by querying the newest version from
     /// the location specified in `source`.
     /// This includes a blocking network call, so it may be slow.
     /// This can only be performed if the `current_version` field has been
     /// set, either by loading the install receipt or by specifying it using
     /// `set_current_version`.
+    /// Note that this also checks to see if the current executable is
+    /// *eligible* for updates, by checking to see if it's the executable
+    /// that the install receipt is for. In the case that the executable comes
+    /// from a different source, it will return before the network call for a
+    /// new version.
     pub async fn is_update_needed(&mut self) -> AxoupdateResult<bool> {
+        if !self.check_receipt_is_for_this_executable()? {
+            return Ok(false);
+        }
+
         let Some(current_version) = self.current_version.to_owned() else {
             return Err(AxoupdateError::NotConfigured {
                 missing_field: "current_version".to_owned(),
@@ -378,6 +436,14 @@ pub enum AxoupdateError {
     #[cfg(feature = "axo_releases")]
     #[error(transparent)]
     Gazenot(#[from] GazenotError),
+
+    /// Failure when converting a PathBuf to a Utf8PathBuf
+    #[error("An internal error occurred when decoding path `{:?}' to utf8", path)]
+    #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
+    CaminoConversionFailed {
+        /// The path which Camino failed to convert
+        path: PathBuf,
+    },
 
     /// Indicates that the only updates available are located at a source
     /// this crate isn't configured to support. This is returned if the
