@@ -77,7 +77,7 @@ checksum = "1a046dd9d257d88bf3ec48ba001fb9434956efef0814fbc594d39d25494d9f80"
 dependencies = [
  "camino",
  "image",
- "miette 7.1.0",
+ "miette 7.2.0",
  "mime",
  "serde",
  "serde_json",
@@ -95,7 +95,7 @@ dependencies = [
  "backtrace",
  "backtrace-ext",
  "console",
- "miette 7.1.0",
+ "miette 7.2.0",
  "serde",
  "serde_json",
  "thiserror",
@@ -109,7 +109,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4de46920588aef95658797996130bacd542436aee090084646521260a74bda7d"
 dependencies = [
- "miette 7.1.0",
+ "miette 7.2.0",
  "thiserror",
  "tracing",
 ]
@@ -123,7 +123,7 @@ dependencies = [
  "camino",
  "gazenot",
  "homedir",
- "miette 7.1.0",
+ "miette 7.2.0",
  "reqwest",
  "serde",
  "temp-dir",
@@ -137,7 +137,7 @@ version = "0.3.0"
 dependencies = [
  "axocli",
  "axoupdater",
- "miette 7.1.0",
+ "miette 7.2.0",
 ]
 
 [[package]]
@@ -468,7 +468,7 @@ dependencies = [
  "axoasset 0.6.2",
  "backon",
  "camino",
- "miette 7.1.0",
+ "miette 7.2.0",
  "reqwest",
  "schemars",
  "serde",
@@ -768,13 +768,14 @@ dependencies = [
 
 [[package]]
 name = "miette"
-version = "7.1.0"
+version = "7.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baed61d13cc3723ee6dbed730a82bfacedc60a85d81da2d77e9c3e8ebc0b504a"
+checksum = "4edc8853320c2a0dab800fbda86253c8938f6ea88510dc92c5f1ed20e794afc1"
 dependencies = [
  "backtrace",
  "backtrace-ext",
- "miette-derive 7.1.0",
+ "cfg-if",
+ "miette-derive 7.2.0",
  "owo-colors",
  "supports-color",
  "supports-hyperlinks",
@@ -798,9 +799,9 @@ dependencies = [
 
 [[package]]
 name = "miette-derive"
-version = "7.1.0"
+version = "7.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f301c3f54f98abc6c212ee722f5e5c62e472a334415840669e356f04850051ec"
+checksum = "dcf09caffaac8068c346b6df2a7fc27a177fd20b39421a39ce0a211bde679a6c"
 dependencies = [
  "proc-macro2",
  "quote",
