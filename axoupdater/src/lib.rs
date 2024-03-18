@@ -189,12 +189,6 @@ impl AxoUpdater {
     /// system.
     /// Returns an error if the receipt hasn't been loaded yet.
     pub fn check_receipt_is_for_this_executable(&self) -> AxoupdateResult<bool> {
-        let Some(install_prefix) = &self.install_prefix else {
-            return Err(AxoupdateError::NotConfigured {
-                missing_field: "install_prefix".to_owned(),
-            });
-        };
-
         let current_exe_path = Utf8PathBuf::from_path_buf(current_exe()?.canonicalize()?)
             .map_err(|path| AxoupdateError::CaminoConversionFailed { path })?;
         // First determine the parent dir
@@ -210,16 +204,9 @@ impl AxoUpdater {
             }
         }
 
-        let mut install_root = install_prefix.to_owned();
-        if install_root.file_name() == Some("bin") {
-            if let Some(parent) = install_root.parent() {
-                install_root = parent.to_path_buf();
-            }
-        }
-
         // Looks like this EXE comes from a different source than the install
         // receipt
-        if current_exe_root != install_root {
+        if current_exe_root != self.install_prefix_root()? {
             return Ok(false);
         }
 
@@ -269,6 +256,27 @@ impl AxoUpdater {
             .build()
             .expect("Initializing tokio runtime failed")
             .block_on(self.is_update_needed())
+    }
+
+    /// Returns the root of the install prefix, stripping the final `/bin`
+    /// component if necessary. Works around a bug introduced in cargo-dist
+    /// where this field was returned inconsistently in receipts for a few
+    /// versions.
+    fn install_prefix_root(&self) -> AxoupdateResult<Utf8PathBuf> {
+        let Some(install_prefix) = &self.install_prefix else {
+            return Err(AxoupdateError::NotConfigured {
+                missing_field: "install_prefix".to_owned(),
+            });
+        };
+
+        let mut install_root = install_prefix.to_owned();
+        if install_root.file_name() == Some("bin") {
+            if let Some(parent) = install_root.parent() {
+                install_root = parent.to_path_buf();
+            }
+        }
+
+        Ok(install_root)
     }
 
     /// Attempts to perform an update. The return value specifies whether an
@@ -345,6 +353,9 @@ impl AxoUpdater {
         if !self.print_installer_stderr {
             command.stderr(Stdio::null());
         }
+        // Forces the generated installer to install to exactly this path,
+        // regardless of how it's configured to install.
+        command.env("CARGO_DIST_FORCE_INSTALL_DIR", self.install_prefix_root()?);
         command.run()?;
 
         let result = UpdateResult {
