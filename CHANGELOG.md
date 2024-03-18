@@ -1,3 +1,7 @@
+# Version 0.3.1 (2024-03-18)
+
+This is a minor bugfix release which fixes loading install receipts which contain UTF-8 byte order marks.
+
 # Version 0.3.0 (2024-03-08)
 
 This release contains several bugfixes and improvements:
