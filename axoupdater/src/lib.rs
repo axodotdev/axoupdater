@@ -34,6 +34,11 @@ pub struct UpdateResult {
     pub new_version: String,
     /// The tag the new version was created from
     pub new_version_tag: String,
+    /// The root that the new version was installed to
+    /// NOTE: This is a prediction, and the underlying installer may ignore it
+    /// if it's out of date. Installers built with cargo-dist 0.12.0 or later
+    /// will definitively use this value.
+    pub install_prefix: Utf8PathBuf,
 }
 
 /// Struct representing an updater process
@@ -353,9 +358,10 @@ impl AxoUpdater {
         if !self.print_installer_stderr {
             command.stderr(Stdio::null());
         }
+        let install_prefix = self.install_prefix_root()?;
         // Forces the generated installer to install to exactly this path,
         // regardless of how it's configured to install.
-        command.env("CARGO_DIST_FORCE_INSTALL_DIR", self.install_prefix_root()?);
+        command.env("CARGO_DIST_FORCE_INSTALL_DIR", &install_prefix);
         command.run()?;
 
         let result = UpdateResult {
@@ -365,6 +371,7 @@ impl AxoUpdater {
                 .unwrap_or("unable to determine".to_owned()),
             new_version: release.version(),
             new_version_tag: release.tag_name.to_owned(),
+            install_prefix,
         };
 
         Ok(Some(result))
