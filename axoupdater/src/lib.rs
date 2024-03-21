@@ -211,7 +211,7 @@ impl AxoUpdater {
 
         // Looks like this EXE comes from a different source than the install
         // receipt
-        if current_exe_root != self.install_prefix_root()? {
+        if current_exe_root != self.install_prefix_root_normalized()? {
             return Ok(false);
         }
 
@@ -282,6 +282,14 @@ impl AxoUpdater {
         }
 
         Ok(install_root)
+    }
+
+    /// Returns a normalized version of install_prefix_root, for comparison
+    fn install_prefix_root_normalized(&self) -> AxoupdateResult<Utf8PathBuf> {
+        let raw_root = self.install_prefix_root()?;
+        let normalized = Utf8PathBuf::from_path_buf(raw_root.canonicalize()?)
+            .map_err(|path| AxoupdateError::CaminoConversionFailed { path })?;
+        Ok(normalized)
     }
 
     /// Attempts to perform an update. The return value specifies whether an
