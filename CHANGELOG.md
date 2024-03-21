@@ -1,3 +1,7 @@
+# Version 0.3.3 (2024-03-21)
+
+This is a minor bugfix release. It relaxes the reqwest dependency, which had been bumped to 0.12.0 in the previous release. It will now accept either 0.11.0 or any later version.
+
 # Version 0.3.2 (2024-03-21)
 
 This is a minor bugfix release:
