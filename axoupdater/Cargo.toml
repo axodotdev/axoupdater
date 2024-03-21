@@ -34,7 +34,7 @@ temp-dir = "0.1.12"
 gazenot = { version = "0.3.0", features = ["client_lib"], optional = true }
 
 # github releases
-reqwest = { version = "0.11", default-features = false, features = [
+reqwest = { version = ">=0.11.0", default-features = false, features = [
     "rustls-tls",
     "json",
 ], optional = true }
