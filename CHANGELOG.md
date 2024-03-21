@@ -1,3 +1,10 @@
+# Version 0.3.2 (2024-03-21)
+
+This is a minor bugfix release:
+
+* more robust behaviour when paired with installers built with cargo-dist 0.12.0 (not yet released)
+* fix for an issue on windows where the installer would never think the receipt matched the binary
+
 # Version 0.3.1 (2024-03-18)
 
 This is a minor bugfix release which fixes loading install receipts which contain UTF-8 byte order marks.
