@@ -383,7 +383,7 @@ impl AxoUpdater {
         } else {
             installer_path.as_str()
         };
-        let mut command = Cmd::new(path, "installer");
+        let mut command = Cmd::new(path, "execute installer");
         if cfg!(windows) {
             command.arg(&installer_path);
         }
@@ -397,7 +397,7 @@ impl AxoUpdater {
         // Forces the generated installer to install to exactly this path,
         // regardless of how it's configured to install.
         command.env("CARGO_DIST_FORCE_INSTALL_DIR", &install_prefix);
-        command.run()?;
+        command.run().unwrap();
 
         let result = UpdateResult {
             old_version: self
@@ -969,6 +969,8 @@ fn get_app_name() -> Option<String> {
 fn get_config_path(app_name: &str) -> AxoupdateResult<Utf8PathBuf> {
     if env::var("AXOUPDATER_CONFIG_WORKING_DIR").is_ok() {
         Ok(Utf8PathBuf::try_from(current_dir()?)?)
+    } else if let Ok(path) = env::var("AXOUPDATER_CONFIG_PATH") {
+        Ok(Utf8PathBuf::from(path))
     } else {
         let home = if cfg!(windows) {
             env::var("LOCALAPPDATA").map(PathBuf::from).ok()
