@@ -41,14 +41,27 @@ pub struct UpdateResult {
     pub install_prefix: Utf8PathBuf,
 }
 
+/// Used to specify what version to upgrade to
+#[derive(Clone)]
+pub enum UpdateRequest {
+    /// Always update to the latest
+    Latest,
+    /// Upgrade (or downgrade) to this specific version
+    SpecificVersion(String),
+    /// Upgrade (or downgrade) to this specific tag
+    SpecificTag(String),
+}
+
 /// Struct representing an updater process
 pub struct AxoUpdater {
     /// The name of the program to update, if specified
     pub name: Option<String>,
     /// Information about where updates should be fetched from
     pub source: Option<ReleaseSource>,
+    /// What version should be updated to
+    version_specifier: UpdateRequest,
     /// Information about the latest release; used to determine if an update is needed
-    latest_release: Option<Release>,
+    requested_release: Option<Release>,
     /// The current version number
     current_version: Option<String>,
     /// Information about the install prefix of the previous version
@@ -73,7 +86,8 @@ impl AxoUpdater {
         AxoUpdater {
             name: None,
             source: None,
-            latest_release: None,
+            version_specifier: UpdateRequest::Latest,
+            requested_release: None,
             current_version: None,
             install_prefix: None,
             print_installer_stdout: true,
@@ -86,7 +100,8 @@ impl AxoUpdater {
         AxoUpdater {
             name: Some(app_name.to_owned()),
             source: None,
-            latest_release: None,
+            version_specifier: UpdateRequest::Latest,
+            requested_release: None,
             current_version: None,
             install_prefix: None,
             print_installer_stdout: true,
@@ -110,7 +125,8 @@ impl AxoUpdater {
         Ok(AxoUpdater {
             name: Some(app_name.to_owned()),
             source: None,
-            latest_release: None,
+            version_specifier: UpdateRequest::Latest,
+            requested_release: None,
             current_version: None,
             install_prefix: None,
             print_installer_stdout: true,
@@ -188,6 +204,17 @@ impl AxoUpdater {
         self
     }
 
+    /// Configures axoupdater's update strategy, replacing whatever was
+    /// previously configured with the strategy in `version_specifier`.
+    pub fn configure_version_specifier(
+        &mut self,
+        version_specifier: UpdateRequest,
+    ) -> &mut AxoUpdater {
+        self.version_specifier = version_specifier;
+
+        self
+    }
+
     /// Checks to see if the loaded install receipt is for this executable.
     /// Used to guard against cases where the running EXE is from a package
     /// manager, but a receipt from a shell installed-copy is present on the
@@ -240,11 +267,11 @@ impl AxoUpdater {
             });
         };
 
-        let release = match &self.latest_release {
+        let release = match &self.requested_release {
             Some(r) => r,
             None => {
-                self.fetch_latest_release().await?;
-                self.latest_release.as_ref().unwrap()
+                self.fetch_release().await?;
+                self.requested_release.as_ref().unwrap()
             }
         };
 
@@ -301,11 +328,11 @@ impl AxoUpdater {
             return Ok(None);
         }
 
-        let release = match &self.latest_release {
+        let release = match &self.requested_release {
             Some(r) => r,
             None => {
-                self.fetch_latest_release().await?;
-                self.latest_release.as_ref().unwrap()
+                self.fetch_release().await?;
+                self.requested_release.as_ref().unwrap()
             }
         };
         let tempdir = TempDir::new()?;
@@ -397,7 +424,7 @@ impl AxoUpdater {
             .block_on(self.run())
     }
 
-    async fn fetch_latest_release(&mut self) -> AxoupdateResult<()> {
+    async fn fetch_release(&mut self) -> AxoupdateResult<()> {
         let Some(app_name) = &self.name else {
             return Err(AxoupdateError::NotConfigured {
                 missing_field: "app_name".to_owned(),
@@ -409,20 +436,45 @@ impl AxoUpdater {
             });
         };
 
-        let Some(release) = get_latest_stable_release(
-            &source.name,
-            &source.owner,
-            &source.app_name,
-            &source.release_type,
-        )
-        .await?
-        else {
+        let release = match self.version_specifier.to_owned() {
+            UpdateRequest::Latest => {
+                get_latest_stable_release(
+                    &source.name,
+                    &source.owner,
+                    &source.app_name,
+                    &source.release_type,
+                )
+                .await?
+            }
+            UpdateRequest::SpecificTag(version) => {
+                get_specific_tag(
+                    &source.name,
+                    &source.owner,
+                    &source.app_name,
+                    &source.release_type,
+                    &version,
+                )
+                .await?
+            }
+            UpdateRequest::SpecificVersion(version) => {
+                get_specific_version(
+                    &source.name,
+                    &source.owner,
+                    &source.app_name,
+                    &source.release_type,
+                    &version,
+                )
+                .await?
+            }
+        };
+
+        let Some(release) = release else {
             return Err(AxoupdateError::NoStableReleases {
                 app_name: app_name.to_owned(),
             });
         };
 
-        self.latest_release = Some(release);
+        self.requested_release = Some(release);
 
         Ok(())
     }
@@ -533,6 +585,17 @@ pub enum AxoupdateError {
         name: String,
         /// This app's name
         app_name: String,
+    },
+
+    /// Indicates that no releases exist for this app at all.
+    #[error("The version {version} was not found for the app {app_name} in workspace {name}")]
+    VersionNotFound {
+        /// The workspace's name
+        name: String,
+        /// This app's name
+        app_name: String,
+        /// The version we failed to find
+        version: String,
     },
 
     /// This error catches an edge case where the axoupdater executable was run
@@ -650,6 +713,58 @@ pub struct InstallReceipt {
 }
 
 #[cfg(feature = "github_releases")]
+async fn get_specific_github_tag(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+    tag: &str,
+) -> AxoupdateResult<Release> {
+    let client = reqwest::Client::new();
+    let resp: Release = client
+        .get(format!(
+            "{GITHUB_API}/repos/{owner}/{name}/releases/tags/{tag}"
+        ))
+        .header(ACCEPT, "application/json")
+        .header(
+            USER_AGENT,
+            format!("axoupdate/{}", env!("CARGO_PKG_VERSION")),
+        )
+        .send()
+        .await?
+        .error_for_status()
+        .map_err(|_| AxoupdateError::VersionNotFound {
+            name: name.to_owned(),
+            app_name: app_name.to_owned(),
+            version: tag.to_owned(),
+        })?
+        .json()
+        .await?;
+
+    Ok(resp)
+}
+
+#[cfg(feature = "github_releases")]
+async fn get_specific_github_version(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+    version: &str,
+) -> AxoupdateResult<Release> {
+    let releases = get_github_releases(name, owner, app_name).await?;
+    let release = releases.into_iter().find(|r| r.version() == version);
+
+    if let Some(release) = release {
+        Ok(release)
+    } else {
+        Err(AxoupdateError::VersionNotFound {
+            name: name.to_owned(),
+            app_name: app_name.to_owned(),
+            version: version.to_owned(),
+        })
+    }
+}
+
+#[cfg(feature = "github_releases")]
 async fn get_github_releases(
     name: &str,
     owner: &str,
@@ -665,6 +780,11 @@ async fn get_github_releases(
         )
         .send()
         .await?
+        .error_for_status()
+        .map_err(|_| AxoupdateError::ReleaseNotFound {
+            name: name.to_owned(),
+            app_name: app_name.to_owned(),
+        })?
         .json()
         .await?;
 
@@ -676,6 +796,46 @@ async fn get_github_releases(
                 .any(|asset| asset.name.starts_with(&format!("{app_name}-installer")))
         })
         .collect())
+}
+
+#[cfg(feature = "axo_releases")]
+async fn get_specific_axo_version(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+    version: &str,
+) -> AxoupdateResult<Release> {
+    let releases = get_axo_releases(name, owner, app_name).await?;
+    let release = releases.into_iter().find(|r| r.version() == version);
+
+    if let Some(release) = release {
+        Ok(release)
+    } else {
+        Err(AxoupdateError::ReleaseNotFound {
+            name: name.to_owned(),
+            app_name: app_name.to_owned(),
+        })
+    }
+}
+
+#[cfg(feature = "axo_releases")]
+async fn get_specific_axo_tag(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+    tag: &str,
+) -> AxoupdateResult<Release> {
+    let releases = get_axo_releases(name, owner, app_name).await?;
+    let release = releases.into_iter().find(|r| r.tag_name == tag);
+
+    if let Some(release) = release {
+        Ok(release)
+    } else {
+        Err(AxoupdateError::ReleaseNotFound {
+            name: name.to_owned(),
+            app_name: app_name.to_owned(),
+        })
+    }
 }
 
 #[cfg(feature = "axo_releases")]
@@ -702,6 +862,66 @@ async fn get_axo_releases(
     releases.reverse();
 
     Ok(releases)
+}
+
+async fn get_specific_version(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+    release_type: &ReleaseSourceType,
+    version: &str,
+) -> AxoupdateResult<Option<Release>> {
+    let release = match release_type {
+        #[cfg(feature = "github_releases")]
+        ReleaseSourceType::GitHub => {
+            get_specific_github_version(name, owner, app_name, version).await?
+        }
+        #[cfg(not(feature = "github_releases"))]
+        ReleaseSourceType::GitHub => {
+            return Err(AxoupdateError::BackendDisabled {
+                backend: "github".to_owned(),
+            })
+        }
+        #[cfg(feature = "axo_releases")]
+        ReleaseSourceType::Axo => get_specific_axo_version(name, owner, app_name, version).await?,
+        #[cfg(not(feature = "axo_releases"))]
+        ReleaseSourceType::Axo => {
+            return Err(AxoupdateError::BackendDisabled {
+                backend: "axodotdev".to_owned(),
+            })
+        }
+    };
+
+    Ok(Some(release))
+}
+
+async fn get_specific_tag(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+    release_type: &ReleaseSourceType,
+    tag: &str,
+) -> AxoupdateResult<Option<Release>> {
+    let release = match release_type {
+        #[cfg(feature = "github_releases")]
+        ReleaseSourceType::GitHub => get_specific_github_tag(name, owner, app_name, tag).await?,
+        #[cfg(not(feature = "github_releases"))]
+        ReleaseSourceType::GitHub => {
+            return Err(AxoupdateError::BackendDisabled {
+                backend: "github".to_owned(),
+            })
+        }
+        #[cfg(feature = "axo_releases")]
+        ReleaseSourceType::Axo => get_specific_axo_tag(name, owner, app_name, tag).await?,
+        #[cfg(not(feature = "axo_releases"))]
+        ReleaseSourceType::Axo => {
+            return Err(AxoupdateError::BackendDisabled {
+                backend: "axodotdev".to_owned(),
+            })
+        }
+    };
+
+    Ok(Some(release))
 }
 
 async fn get_latest_stable_release(
