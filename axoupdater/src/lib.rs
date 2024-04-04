@@ -393,6 +393,10 @@ impl AxoUpdater {
         if !self.print_installer_stderr {
             command.stderr(Stdio::null());
         }
+        // On Windows, fixes a bug that occurs if the parent process is
+        // PowerShell Core.
+        // https://github.com/PowerShell/PowerShell/issues/18530
+        command.env_remove("PSModulePath");
         let install_prefix = self.install_prefix_root()?;
         // Forces the generated installer to install to exactly this path,
         // regardless of how it's configured to install.
