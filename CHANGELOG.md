@@ -1,3 +1,7 @@
+# Version 0.3.4 (2024-04-04)
+
+This is a minor bugfix release. It fixes an issue which would cause Windows updates to fail if the parent process is PowerShell Core.
+
 # Version 0.3.3 (2024-03-21)
 
 This is a minor bugfix release. It relaxes the reqwest dependency, which had been bumped to 0.12.0 in the previous release. It will now accept either 0.11.0 or any later version.
