@@ -1,3 +1,7 @@
+# Version 0.3.6 (2024-04-05)
+
+This is a minor bugfix release. It updates the ordering of axo releases queries to reflect changes to the deployed API.
+
 # Version 0.3.5 (2024-04-05)
 
 This is a minor bugfix release. It makes us try to temporarily rename the current executable on windows, in case we're about to overwrite it.
