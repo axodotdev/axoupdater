@@ -378,6 +378,23 @@ impl AxoUpdater {
 
         LocalAsset::write_new_all(&download, &installer_path)?;
 
+        // Before we update, move ourselves to a temporary directory.
+        // This is necessary because Windows won't let an actively-running
+        // executable be overwritten.
+        // If the update fails, we'll move it back to where it was before
+        // we began the update process.
+        #[cfg(target_family = "windows")]
+        let (ourselves, old_path) = {
+            let temp_root = TempDir::new()?;
+            let old_path = std::env::current_exe()?;
+            let ourselves = temp_root
+                .path()
+                .join(format!("cargo-dist{}", std::env::consts::EXE_SUFFIX));
+            std::fs::rename(&old_path, &ourselves)?;
+
+            (ourselves, old_path)
+        };
+
         let path = if cfg!(windows) {
             "powershell"
         } else {
@@ -401,7 +418,14 @@ impl AxoUpdater {
         // Forces the generated installer to install to exactly this path,
         // regardless of how it's configured to install.
         command.env("CARGO_DIST_FORCE_INSTALL_DIR", &install_prefix);
-        command.run().unwrap();
+        let result = command.run();
+
+        #[cfg(target_family = "windows")]
+        if result.is_err() {
+            std::fs::rename(&ourselves, &old_path)?;
+        }
+
+        result?;
 
         let result = UpdateResult {
             old_version: self
