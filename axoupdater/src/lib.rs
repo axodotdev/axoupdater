@@ -383,16 +383,19 @@ impl AxoUpdater {
         // executable be overwritten.
         // If the update fails, we'll move it back to where it was before
         // we began the update process.
-        #[cfg(target_family = "windows")]
-        let (ourselves, old_path) = {
-            let temp_root = TempDir::new()?;
+        // NOTE: this TempDir needs to be held alive for the whole function.
+        let temp_root;
+        let to_restore = if cfg!(target_family = "windows") {
+            temp_root = TempDir::new()?;
             let old_path = std::env::current_exe()?;
             let ourselves = temp_root
                 .path()
                 .join(format!("cargo-dist{}", std::env::consts::EXE_SUFFIX));
             std::fs::rename(&old_path, &ourselves)?;
 
-            (ourselves, old_path)
+            Some((ourselves, old_path))
+        } else {
+            None
         };
 
         let path = if cfg!(windows) {
@@ -420,9 +423,10 @@ impl AxoUpdater {
         command.env("CARGO_DIST_FORCE_INSTALL_DIR", &install_prefix);
         let result = command.run();
 
-        #[cfg(target_family = "windows")]
         if result.is_err() {
-            std::fs::rename(&ourselves, &old_path)?;
+            if let Some((ourselves, old_path)) = to_restore {
+                std::fs::rename(ourselves, old_path)?;
+            }
         }
 
         result?;
