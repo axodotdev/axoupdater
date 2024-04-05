@@ -388,9 +388,8 @@ impl AxoUpdater {
         let to_restore = if cfg!(target_family = "windows") {
             temp_root = TempDir::new()?;
             let old_path = std::env::current_exe()?;
-            let ourselves = temp_root
-                .path()
-                .join(format!("cargo-dist{}", std::env::consts::EXE_SUFFIX));
+            let old_filename = old_path.file_name().expect("current binary has no name!?");
+            let ourselves = temp_root.path().join(old_filename);
             std::fs::rename(&old_path, &ourselves)?;
 
             Some((ourselves, old_path))
