@@ -877,33 +877,86 @@ async fn get_specific_github_version(
 }
 
 #[cfg(feature = "github_releases")]
-async fn get_github_releases(
+async fn get_releases(
+    client: &reqwest::Client,
+    url: &str,
     name: &str,
-    owner: &str,
     app_name: &str,
-) -> AxoupdateResult<Vec<Release>> {
-    let client = reqwest::Client::new();
-    let resp: Vec<Release> = client
-        .get(format!("{GITHUB_API}/repos/{owner}/{name}/releases"))
+) -> AxoupdateResult<reqwest::Response> {
+    client
+        .get(url)
         .header(ACCEPT, "application/json")
         .header(
             USER_AGENT,
             format!("axoupdate/{}", env!("CARGO_PKG_VERSION")),
         )
+        .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
         .await?
         .error_for_status()
         .map_err(|_| AxoupdateError::ReleaseNotFound {
             name: name.to_owned(),
             app_name: app_name.to_owned(),
-        })?
-        .json::<Vec<GithubRelease>>()
-        .await?
-        .into_iter()
-        .filter_map(|gh| Release::try_from_github(app_name, gh).ok())
-        .collect();
+        })
+}
 
-    Ok(resp
+// The format of the header looks like so:
+// ```
+// <https://api.github.com/repositories/1300192/issues?page=2>; rel="prev", <https://api.github.com/repositories/1300192/issues?page=4>; rel="next", <https://api.github.com/repositories/1300192/issues?page=515>; rel="last", <https://api.github.com/repositories/1300192/issues?page=1>; rel="first"
+// ```
+#[cfg(feature = "github_releases")]
+fn get_next_url(link_header: &str) -> Option<String> {
+    let links = link_header.split(',').collect::<Vec<_>>();
+    for entry in links {
+        if entry.contains("next") {
+            let mut link = entry.split(';').collect::<Vec<_>>()[0]
+                .to_string()
+                .trim()
+                .to_string();
+            link.remove(0);
+            link.pop();
+            return Some(link);
+        }
+    }
+    None
+}
+
+#[cfg(feature = "github_releases")]
+async fn get_github_releases(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+) -> AxoupdateResult<Vec<Release>> {
+    let client = reqwest::Client::new();
+    let mut url = format!("{GITHUB_API}/repos/{owner}/{name}/releases");
+    let mut pages_remain = true;
+    let mut data: Vec<Release> = vec![];
+
+    while pages_remain {
+        let resp = get_releases(&client, &url, name, app_name).await?;
+
+        let headers = resp.headers();
+        let link_header = &headers[reqwest::header::LINK]
+            .to_str()
+            .expect("header was not ascii")
+            .to_string();
+        pages_remain = link_header.contains("rel=\"next\"");
+
+        let mut body: Vec<Release> = resp
+            .json::<Vec<GithubRelease>>()
+            .await?
+            .into_iter()
+            .filter_map(|gh| Release::try_from_github(app_name, gh).ok())
+            .collect();
+        data.append(&mut body);
+        dbg!(&data);
+
+        if pages_remain {
+            url = get_next_url(link_header).expect("detected a next but it was a lie");
+        }
+    }
+
+    Ok(data
         .into_iter()
         .filter(|r| {
             r.assets
@@ -1141,4 +1194,36 @@ fn load_receipt_for(app_name: &str) -> AxoupdateResult<InstallReceipt> {
     load_receipt_from_path(&install_receipt_path).map_err(|_| AxoupdateError::ReceiptLoadFailed {
         app_name: app_name.to_owned(),
     })
+}
+
+#[test]
+fn test_link_header_parse() {
+    let sample = r#"
+<https://api.github.com/repositories/1300192/issues?page=2>; rel="prev", <https://api.github.com/repositories/1300192/issues?page=4>; rel="next", <https://api.github.com/repositories/1300192/issues?page=515>; rel="last", <https://api.github.com/repositories/1300192/issues?page=1>; rel="first"
+"#;
+
+    let result = get_next_url(sample);
+    assert!(result.is_some());
+    assert_eq!(
+        "https://api.github.com/repositories/1300192/issues?page=4",
+        result.unwrap()
+    );
+}
+
+#[test]
+fn test_link_header_parse_next_missing() {
+    let sample = r#"
+<https://api.github.com/repositories/1300192/issues?page=2>; rel="prev", <https://api.github.com/repositories/1300192/issues?page=515>; rel="last", <https://api.github.com/repositories/1300192/issues?page=1>; rel="first"
+"#;
+
+    let result = get_next_url(sample);
+    assert!(result.is_none());
+}
+
+#[test]
+fn test_link_header_parse_empty_header() {
+    let sample = "";
+
+    let result = get_next_url(sample);
+    assert!(result.is_none());
 }
