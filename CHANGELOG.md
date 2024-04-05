@@ -1,3 +1,7 @@
+# Version 0.3.5 (2024-04-05)
+
+This is a minor bugfix release. It makes us try to temporarily rename the current executable on windows, in case we're about to overwrite it.
+
 # Version 0.3.4 (2024-04-04)
 
 This is a minor bugfix release. It fixes an issue which would cause Windows updates to fail if the parent process is PowerShell Core.
