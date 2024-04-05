@@ -884,13 +884,11 @@ async fn get_axo_releases(
         });
     };
 
-    let mut releases: Vec<Release> = our_release
+    let releases: Vec<Release> = our_release
         .releases
         .iter()
         .map(Release::from_gazenot)
         .collect();
-    // GitHub releases are sorted newest to oldest; Axo sorts oldest to newest
-    releases.reverse();
 
     Ok(releases)
 }
