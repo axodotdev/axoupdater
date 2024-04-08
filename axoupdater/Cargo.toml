@@ -25,6 +25,7 @@ axoasset = { version = "0.9.1", default-features = false, features = [
     "json-serde",
 ] }
 axoprocess = "0.2.0"
+axotag = { version = "0.2.0" }
 camino = { version = "1.1.6", features = ["serde1"] }
 homedir = "0.2.1"
 serde = "1.0.197"
