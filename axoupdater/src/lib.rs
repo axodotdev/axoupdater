@@ -5,6 +5,7 @@
 
 use std::{
     env::{self, args, current_dir, current_exe},
+    fmt,
     path::PathBuf,
     process::Stdio,
 };
@@ -27,6 +28,9 @@ use reqwest::{
 use serde::Deserialize;
 use temp_dir::TempDir;
 use thiserror::Error;
+
+/// Test helpers
+pub mod test;
 
 /// Provides information about the result of the upgrade operation
 pub struct UpdateResult {
@@ -796,6 +800,16 @@ pub enum ReleaseSourceType {
     GitHub,
     /// Axo Releases
     Axo,
+}
+
+impl fmt::Display for ReleaseSourceType {
+    /// Returns a string representation of this ReleaseSourceType.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::GitHub => write!(f, "github"),
+            Self::Axo => write!(f, "axodotdev"),
+        }
+    }
 }
 
 /// Information about the source of this app's releases
