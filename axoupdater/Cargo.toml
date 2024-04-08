@@ -10,10 +10,6 @@ readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-name = "axoupdater"
-path = "src/lib.rs"
-
 [features]
 default = ["axo_releases", "github_releases"]
 axo_releases = ["gazenot"]
