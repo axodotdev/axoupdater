@@ -789,7 +789,7 @@ pub struct Asset {
 }
 
 /// Where service this app's releases are hosted on
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ReleaseSourceType {
     /// GitHub Releases
@@ -822,6 +822,46 @@ pub struct InstallReceipt {
     pub source: ReleaseSource,
     /// Installed version
     pub version: String,
+}
+
+#[cfg(feature = "github_releases")]
+async fn get_latest_github_release(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+) -> AxoupdateResult<Option<Release>> {
+    let client = reqwest::Client::new();
+    let gh_release: GithubRelease = client
+        .get(format!("{GITHUB_API}/repos/{owner}/{name}/releases/latest"))
+        .header(ACCEPT, "application/json")
+        .header(
+            USER_AGENT,
+            format!("axoupdate/{}", env!("CARGO_PKG_VERSION")),
+        )
+        .send()
+        .await?
+        .error_for_status()
+        .map_err(|_| AxoupdateError::NoStableReleases {
+            app_name: app_name.to_owned(),
+        })?
+        .json()
+        .await?;
+
+    // Ensure that this release contains an installer asset; if not, it may be
+    // a mismarked "latest" release that's not installable by us.
+    // Returning None here will let us fall back to iterating releases.
+    if !gh_release
+        .assets
+        .iter()
+        .any(|asset| asset.name.starts_with(&format!("{app_name}-installer")))
+    {
+        return Ok(None);
+    }
+
+    match Release::try_from_github(app_name, gh_release) {
+        Ok(release) => Ok(Some(release)),
+        Err(e) => Err(e),
+    }
 }
 
 #[cfg(feature = "github_releases")]
@@ -1127,6 +1167,21 @@ async fn get_latest_stable_release(
     app_name: &str,
     release_type: &ReleaseSourceType,
 ) -> AxoupdateResult<Option<Release>> {
+    // GitHub has an API to request the latest stable release.
+    // If we're looking up a GitHub release, we can use that.
+    // This cuts down on our API requests compared to the paginated release list
+    // we do below.
+    // Note that abyss has an API for this, but gazenot doesn't expose it yet;
+    // we can expand this pattern to Axo Releases in a later release.
+    // It's less critical for that path because the rate limits are less of a
+    // blocker.
+    #[cfg(feature = "github_releases")]
+    if release_type == &ReleaseSourceType::GitHub {
+        if let Ok(Some(release)) = get_latest_github_release(name, owner, app_name).await {
+            return Ok(Some(release));
+        }
+    }
+
     let releases = get_release_list(name, owner, app_name, release_type).await?;
     Ok(releases
         .into_iter()
