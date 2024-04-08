@@ -279,7 +279,17 @@ impl AxoUpdater {
             }
         };
 
-        Ok(current_version < release.version)
+        // If we're doing "latest" semantics we need to check cur < new
+        // If we're doing "specific" semantics we need to check cur != new
+        let conclusion = match self.version_specifier {
+            UpdateRequest::Latest | UpdateRequest::LatestMaybePrerelease => {
+                current_version < release.version
+            }
+            UpdateRequest::SpecificVersion(_) | UpdateRequest::SpecificTag(_) => {
+                current_version != release.version
+            }
+        };
+        Ok(conclusion)
     }
 
     #[cfg(feature = "blocking")]
