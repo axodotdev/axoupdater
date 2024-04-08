@@ -130,6 +130,66 @@ fn test_upgrade() -> std::io::Result<()> {
     Ok(())
 }
 
+#[test]
+fn test_upgrade_allow_prerelease() -> std::io::Result<()> {
+    let tempdir = TempDir::new()?;
+    let bindir_path = &tempdir.path().join("bin");
+    let bindir = Utf8Path::from_path(bindir_path).unwrap();
+    std::fs::create_dir_all(bindir)?;
+
+    let base_version = "0.2.115";
+
+    let url = axolotlsay_tarball_path(base_version);
+
+    let mut response = reqwest::blocking::get(url)
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+
+    let compressed_path =
+        Utf8PathBuf::from_path_buf(tempdir.path().join("axolotlsay.tar.gz")).unwrap();
+    let mut contents = vec![];
+    response.read_to_end(&mut contents)?;
+    std::fs::write(&compressed_path, contents)?;
+
+    // Write the receipt for the updater to use
+    write_receipt(base_version, &bindir.to_path_buf())?;
+
+    LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
+
+    // Now install our copy of the updater instead of the one axolotlsay came with
+    let updater_path = bindir.join(format!("axolotlsay-update{EXE_SUFFIX}"));
+    std::fs::copy(BIN, &updater_path)?;
+
+    let mut updater = Cmd::new(&updater_path, "run updater");
+    updater.env("AXOUPDATER_CONFIG_PATH", bindir);
+    updater.arg("--prerelease");
+    // We'll do that manually
+    updater.check(false);
+    let result = updater.output();
+    assert!(result.is_ok());
+    let res = result.unwrap();
+    let output_stdout = String::from_utf8(res.stdout).unwrap();
+    let output_stderr = String::from_utf8(res.stderr).unwrap();
+
+    // Now let's check the version we just updated to
+    let new_axolotlsay_path = &bindir.join(format!("axolotlsay{EXE_SUFFIX}"));
+    assert!(
+        new_axolotlsay_path.exists(),
+        "update result was\nstdout\n{}\nstderr\n{}",
+        output_stdout,
+        output_stderr
+    );
+    let mut new_axolotlsay = Cmd::new(new_axolotlsay_path, "version test");
+    new_axolotlsay.arg("--version");
+    let output = new_axolotlsay.output().unwrap();
+    let stderr_string = String::from_utf8(output.stdout).unwrap();
+    assert!(stderr_string.starts_with("axolotlsay "));
+    assert_ne!(stderr_string, format!("axolotlsay {}\n", base_version));
+
+    Ok(())
+}
+
 // A similar test to the one above, but it upgrades to a specific version
 // instead of whatever's latest.
 #[test]

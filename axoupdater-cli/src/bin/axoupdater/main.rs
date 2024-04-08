@@ -12,6 +12,10 @@ struct CliArgs {
     /// Installs the specified version instead of the latest version
     #[clap(long)]
     version: Option<String>,
+
+    /// Allows prereleases when just updating to "latest"
+    #[clap(long)]
+    prerelease: bool,
 }
 
 fn real_main(cli: &CliApp<CliArgs>) -> Result<(), miette::Report> {
@@ -26,16 +30,16 @@ fn real_main(cli: &CliApp<CliArgs>) -> Result<(), miette::Report> {
     let mut updater = AxoUpdater::new_for_updater_executable()?;
     updater.load_receipt()?;
 
-    if let Some(version) = &cli.config.tag {
-        updater.configure_version_specifier(axoupdater::UpdateRequest::SpecificTag(
-            version.to_owned(),
-        ));
-    }
-    if let Some(version) = &cli.config.version {
-        updater.configure_version_specifier(axoupdater::UpdateRequest::SpecificVersion(
-            version.to_owned(),
-        ));
-    }
+    let specifier = if let Some(tag) = &cli.config.tag {
+        axoupdater::UpdateRequest::SpecificTag(tag.clone())
+    } else if let Some(version) = &cli.config.version {
+        axoupdater::UpdateRequest::SpecificVersion(version.clone())
+    } else if cli.config.prerelease {
+        axoupdater::UpdateRequest::LatestMaybePrerelease
+    } else {
+        axoupdater::UpdateRequest::Latest
+    };
+    updater.configure_version_specifier(specifier);
 
     if let Some(result) = updater.run_sync()? {
         eprintln!("New release {} installed!", result.new_version)
