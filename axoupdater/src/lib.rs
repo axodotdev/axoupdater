@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![allow(clippy::result_large_err)]
 
 //! axoupdater crate
 
@@ -13,6 +14,7 @@ use std::{fs::File, os::unix::fs::PermissionsExt};
 
 use axoasset::{AxoassetError, LocalAsset, SourceFile};
 use axoprocess::{AxoprocessError, Cmd};
+use axotag::{parse_tag, Version};
 use camino::Utf8PathBuf;
 #[cfg(feature = "axo_releases")]
 use gazenot::{error::GazenotError, Gazenot};
@@ -29,9 +31,9 @@ use thiserror::Error;
 /// Provides information about the result of the upgrade operation
 pub struct UpdateResult {
     /// The old version (pre-upgrade)
-    pub old_version: String,
+    pub old_version: Option<Version>,
     /// The new version (post-upgrade)
-    pub new_version: String,
+    pub new_version: Version,
     /// The tag the new version was created from
     pub new_version_tag: String,
     /// The root that the new version was installed to
@@ -46,6 +48,8 @@ pub struct UpdateResult {
 pub enum UpdateRequest {
     /// Always update to the latest
     Latest,
+    /// Always update to the latest, allow prereleases
+    LatestMaybePrerelease,
     /// Upgrade (or downgrade) to this specific version
     SpecificVersion(String),
     /// Upgrade (or downgrade) to this specific tag
@@ -63,7 +67,7 @@ pub struct AxoUpdater {
     /// Information about the latest release; used to determine if an update is needed
     requested_release: Option<Release>,
     /// The current version number
-    current_version: Option<String>,
+    current_version: Option<Version>,
     /// Information about the install prefix of the previous version
     install_prefix: Option<Utf8PathBuf>,
     /// Whether to display the underlying installer's stdout
@@ -146,16 +150,16 @@ impl AxoUpdater {
 
         let receipt = load_receipt_for(app_name)?;
 
-        self.source = Some(receipt.source.clone());
-        self.current_version = Some(receipt.version.to_owned());
-        self.install_prefix = Some(receipt.install_prefix.to_owned());
+        self.source = Some(receipt.source);
+        self.current_version = Some(receipt.version.parse::<Version>()?);
+        self.install_prefix = Some(receipt.install_prefix);
 
         Ok(self)
     }
 
     /// Explicitly specifies the current version.
-    pub fn set_current_version(&mut self, version: &str) -> AxoupdateResult<&mut AxoUpdater> {
-        self.current_version = Some(version.to_owned());
+    pub fn set_current_version(&mut self, version: Version) -> AxoupdateResult<&mut AxoUpdater> {
+        self.current_version = Some(version);
 
         Ok(self)
     }
@@ -275,7 +279,7 @@ impl AxoUpdater {
             }
         };
 
-        Ok(current_version != release.version())
+        Ok(current_version < release.version)
     }
 
     #[cfg(feature = "blocking")]
@@ -431,11 +435,8 @@ impl AxoUpdater {
         result?;
 
         let result = UpdateResult {
-            old_version: self
-                .current_version
-                .to_owned()
-                .unwrap_or("unable to determine".to_owned()),
-            new_version: release.version(),
+            old_version: self.current_version.clone(),
+            new_version: release.version.clone(),
             new_version_tag: release.tag_name.to_owned(),
             install_prefix,
         };
@@ -477,6 +478,15 @@ impl AxoUpdater {
                 )
                 .await?
             }
+            UpdateRequest::LatestMaybePrerelease => {
+                get_latest_maybe_prerelease(
+                    &source.name,
+                    &source.owner,
+                    &source.app_name,
+                    &source.release_type,
+                )
+                .await?
+            }
             UpdateRequest::SpecificTag(version) => {
                 get_specific_tag(
                     &source.name,
@@ -493,7 +503,7 @@ impl AxoUpdater {
                     &source.owner,
                     &source.app_name,
                     &source.release_type,
-                    &version,
+                    &version.parse::<Version>()?,
                 )
                 .await?
             }
@@ -541,10 +551,18 @@ pub enum AxoupdateError {
     #[error(transparent)]
     Axoprocess(#[from] AxoprocessError),
 
+    /// Passed through from axotag
+    #[error(transparent)]
+    Axotag(#[from] axotag::errors::TagError),
+
     /// Passed through from gazenot
     #[cfg(feature = "axo_releases")]
     #[error(transparent)]
     Gazenot(#[from] GazenotError),
+
+    /// Failed to parse a version
+    #[error(transparent)]
+    Version(#[from] axotag::semver::Error),
 
     /// Failure when converting a PathBuf to a Utf8PathBuf
     #[error("An internal error occurred when decoding path `{:?}' to utf8", path)]
@@ -650,11 +668,28 @@ pub enum AxoupdateError {
 
 const GITHUB_API: &str = "https://api.github.com";
 
-/// A struct representing a specific release, either from GitHub or Axo Releases.
+/// A struct representing a specific GitHub Release
 #[derive(Clone, Debug, Deserialize)]
+pub struct GithubRelease {
+    /// The tag this release represents
+    pub tag_name: String,
+    /// The name of the release
+    pub name: String,
+    /// The URL at which this release lists
+    pub url: String,
+    /// All assets associated with this release
+    pub assets: Vec<GithubAsset>,
+    /// Whether or not this release is a prerelease
+    pub prerelease: bool,
+}
+
+/// A struct representing a specific release, either from GitHub or Axo Releases.
+#[derive(Clone, Debug)]
 pub struct Release {
     /// The tag this release represents
     pub tag_name: String,
+    /// The version this release represents
+    pub version: Version,
     /// The name of the release
     pub name: String,
     /// The URL at which this release lists
@@ -666,38 +701,74 @@ pub struct Release {
 }
 
 impl Release {
-    /// Returns the version, with leading `v` stripped if appropriate.
-    pub fn version(&self) -> String {
-        if let Some(stripped) = self.tag_name.strip_prefix('v') {
-            stripped.to_owned()
-        } else {
-            self.tag_name.to_owned()
-        }
+    /// Constructs a release from GitHub Releases data.
+    fn try_from_github(package_name: &str, release: GithubRelease) -> AxoupdateResult<Release> {
+        // try to parse the github release's tag using axotag
+        let announce = parse_tag(
+            &[axotag::Package {
+                name: package_name.to_owned(),
+                version: None,
+            }],
+            &release.tag_name,
+        )?;
+        let version = match announce.release {
+            axotag::ReleaseType::None => unreachable!("parse_tag should never return None"),
+            axotag::ReleaseType::Version(v) => v,
+            axotag::ReleaseType::Package { version, .. } => version,
+        };
+        Ok(Release {
+            tag_name: release.tag_name,
+            version,
+            name: release.name,
+            url: String::new(),
+            assets: release
+                .assets
+                .into_iter()
+                .map(|asset| Asset {
+                    url: asset.url,
+                    browser_download_url: asset.browser_download_url,
+                    name: asset.name,
+                })
+                .collect(),
+            prerelease: release.prerelease,
+        })
     }
 
     /// Constructs a release from Axo Releases data fetched via gazenot.
     #[cfg(feature = "axo_releases")]
-    pub fn from_gazenot(release: &gazenot::PublicRelease) -> Release {
-        Release {
-            tag_name: release.tag_name.to_owned(),
-            name: release.name.to_owned(),
+    fn try_from_gazenot(release: gazenot::PublicRelease) -> AxoupdateResult<Release> {
+        Ok(Release {
+            tag_name: release.tag_name,
+            version: release.version.parse()?,
+            name: release.name,
             url: String::new(),
             assets: release
                 .assets
-                .iter()
+                .into_iter()
                 .map(|asset| Asset {
-                    url: asset.browser_download_url.to_owned(),
-                    browser_download_url: asset.browser_download_url.to_owned(),
-                    name: asset.name.to_owned(),
+                    url: asset.browser_download_url.clone(),
+                    browser_download_url: asset.browser_download_url,
+                    name: asset.name,
                 })
                 .collect(),
             prerelease: release.prerelease,
-        }
+        })
     }
 }
 
-/// Represents a specific asset inside a release.
+/// Represents a specific asset inside a GitHub Release.
 #[derive(Clone, Debug, Deserialize)]
+pub struct GithubAsset {
+    /// The URL at which this asset can be found
+    pub url: String,
+    /// The URL at which this asset can be downloaded
+    pub browser_download_url: String,
+    /// This asset's name
+    pub name: String,
+}
+
+/// Represents a specific asset inside a release.
+#[derive(Clone, Debug)]
 pub struct Asset {
     /// The URL at which this asset can be found
     pub url: String,
@@ -751,7 +822,7 @@ async fn get_specific_github_tag(
     tag: &str,
 ) -> AxoupdateResult<Release> {
     let client = reqwest::Client::new();
-    let resp: Release = client
+    let gh_release: GithubRelease = client
         .get(format!(
             "{GITHUB_API}/repos/{owner}/{name}/releases/tags/{tag}"
         ))
@@ -771,7 +842,7 @@ async fn get_specific_github_tag(
         .json()
         .await?;
 
-    Ok(resp)
+    Release::try_from_github(app_name, gh_release)
 }
 
 #[cfg(feature = "github_releases")]
@@ -779,10 +850,10 @@ async fn get_specific_github_version(
     name: &str,
     owner: &str,
     app_name: &str,
-    version: &str,
+    version: &Version,
 ) -> AxoupdateResult<Release> {
     let releases = get_github_releases(name, owner, app_name).await?;
-    let release = releases.into_iter().find(|r| r.version() == version);
+    let release = releases.into_iter().find(|r| &r.version == version);
 
     if let Some(release) = release {
         Ok(release)
@@ -790,7 +861,7 @@ async fn get_specific_github_version(
         Err(AxoupdateError::VersionNotFound {
             name: name.to_owned(),
             app_name: app_name.to_owned(),
-            version: version.to_owned(),
+            version: version.to_string(),
         })
     }
 }
@@ -816,8 +887,11 @@ async fn get_github_releases(
             name: name.to_owned(),
             app_name: app_name.to_owned(),
         })?
-        .json()
-        .await?;
+        .json::<Vec<GithubRelease>>()
+        .await?
+        .into_iter()
+        .filter_map(|gh| Release::try_from_github(app_name, gh).ok())
+        .collect();
 
     Ok(resp
         .into_iter()
@@ -834,10 +908,10 @@ async fn get_specific_axo_version(
     name: &str,
     owner: &str,
     app_name: &str,
-    version: &str,
+    version: &Version,
 ) -> AxoupdateResult<Release> {
     let releases = get_axo_releases(name, owner, app_name).await?;
-    let release = releases.into_iter().find(|r| r.version() == version);
+    let release = releases.into_iter().find(|r| &r.version == version);
 
     if let Some(release) = release {
         Ok(release)
@@ -877,7 +951,10 @@ async fn get_axo_releases(
 ) -> AxoupdateResult<Vec<Release>> {
     let abyss = Gazenot::new_unauthed("github".to_string(), owner)?;
     let release_lists = abyss.list_releases_many(vec![app_name.to_owned()]).await?;
-    let Some(our_release) = release_lists.iter().find(|rl| rl.package_name == app_name) else {
+    let Some(our_release) = release_lists
+        .into_iter()
+        .find(|rl| rl.package_name == app_name)
+    else {
         return Err(AxoupdateError::ReleaseNotFound {
             name: name.to_owned(),
             app_name: app_name.to_owned(),
@@ -886,8 +963,8 @@ async fn get_axo_releases(
 
     let releases: Vec<Release> = our_release
         .releases
-        .iter()
-        .map(Release::from_gazenot)
+        .into_iter()
+        .filter_map(|r| Release::try_from_gazenot(r).ok())
         .collect();
 
     Ok(releases)
@@ -898,7 +975,7 @@ async fn get_specific_version(
     owner: &str,
     app_name: &str,
     release_type: &ReleaseSourceType,
-    version: &str,
+    version: &Version,
 ) -> AxoupdateResult<Option<Release>> {
     let release = match release_type {
         #[cfg(feature = "github_releases")]
@@ -953,12 +1030,12 @@ async fn get_specific_tag(
     Ok(Some(release))
 }
 
-async fn get_latest_stable_release(
+async fn get_release_list(
     name: &str,
     owner: &str,
     app_name: &str,
     release_type: &ReleaseSourceType,
-) -> AxoupdateResult<Option<Release>> {
+) -> AxoupdateResult<Vec<Release>> {
     let releases = match release_type {
         #[cfg(feature = "github_releases")]
         ReleaseSourceType::GitHub => get_github_releases(name, owner, app_name).await?,
@@ -977,8 +1054,32 @@ async fn get_latest_stable_release(
             })
         }
     };
+    Ok(releases)
+}
 
-    Ok(releases.into_iter().find(|r| !r.prerelease))
+/// Get the latest stable release
+async fn get_latest_stable_release(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+    release_type: &ReleaseSourceType,
+) -> AxoupdateResult<Option<Release>> {
+    let releases = get_release_list(name, owner, app_name, release_type).await?;
+    Ok(releases
+        .into_iter()
+        .filter(|r| !r.prerelease)
+        .max_by_key(|r| r.version.clone()))
+}
+
+/// Get the latest release, allowing for prereleases
+async fn get_latest_maybe_prerelease(
+    name: &str,
+    owner: &str,
+    app_name: &str,
+    release_type: &ReleaseSourceType,
+) -> AxoupdateResult<Option<Release>> {
+    let releases = get_release_list(name, owner, app_name, release_type).await?;
+    Ok(releases.into_iter().max_by_key(|r| r.version.clone()))
 }
 
 fn get_app_name() -> Option<String> {

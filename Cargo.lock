@@ -179,11 +179,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "axotag"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d888fac0b73e64cbdf36a743fc5a25af5ae955c357535cb420b389bf1e1a6c54"
+dependencies = [
+ "miette 7.2.0",
+ "semver",
+ "thiserror",
+]
+
+[[package]]
 name = "axoupdater"
 version = "0.3.6"
 dependencies = [
  "axoasset 0.9.1",
  "axoprocess",
+ "axotag",
  "camino",
  "gazenot",
  "homedir",
@@ -1500,6 +1512,12 @@ dependencies = [
  "ring",
  "untrusted",
 ]
+
+[[package]]
+name = "semver"
+version = "1.0.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92d43fe69e652f3df9bdc2b85b2854a0825b86e4fb76bc44d945137d053639ca"
 
 [[package]]
 name = "serde"
