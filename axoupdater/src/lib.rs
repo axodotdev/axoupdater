@@ -78,6 +78,9 @@ pub struct AxoUpdater {
     print_installer_stdout: bool,
     /// Whether to display the underlying installer's stderr
     print_installer_stderr: bool,
+    /// The path to the installer to use for the new version.
+    /// If not specified, downloads the installer from the release source.
+    installer_path: Option<Utf8PathBuf>,
 }
 
 impl Default for AxoUpdater {
@@ -100,6 +103,7 @@ impl AxoUpdater {
             install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
+            installer_path: None,
         }
     }
 
@@ -114,6 +118,7 @@ impl AxoUpdater {
             install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
+            installer_path: None,
         }
     }
 
@@ -139,6 +144,7 @@ impl AxoUpdater {
             install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
+            installer_path: None,
         })
     }
 
@@ -208,6 +214,22 @@ impl AxoUpdater {
     pub fn disable_installer_output(&mut self) -> &mut AxoUpdater {
         self.print_installer_stdout = false;
         self.print_installer_stderr = false;
+
+        self
+    }
+
+    /// Configures AxoUpdater to use a specific installer for the new release
+    /// instead of downloading it from the release source.
+    pub fn configure_installer_path(&mut self, path: Utf8PathBuf) -> &mut AxoUpdater {
+        self.installer_path = Some(path);
+
+        self
+    }
+
+    /// Configures AxoUpdater to use the installer from the new release.
+    /// This is the default setting.
+    pub fn use_release_installer(&mut self) -> &mut AxoUpdater {
+        self.installer_path = None;
 
         self
     }
@@ -355,46 +377,57 @@ impl AxoUpdater {
         };
         let tempdir = TempDir::new()?;
 
-        let installer_url = match env::consts::OS {
-            "macos" | "linux" => release
-                .assets
-                .iter()
-                .find(|asset| asset.name.ends_with("-installer.sh")),
-            "windows" => release
-                .assets
-                .iter()
-                .find(|asset| asset.name.ends_with("-installer.ps1")),
-            _ => unreachable!(),
-        };
-
-        let installer_url = if let Some(installer_url) = installer_url {
-            installer_url
+        // If we've been given an installer path to use, skip downloading and
+        // install from that.
+        let installer_path = if let Some(path) = &self.installer_path {
+            path.to_owned()
+        // Otherwise, proceed with downloading the installer from the release
+        // we just looked up.
         } else {
-            return Err(AxoupdateError::NoInstallerForPackage {});
+            let installer_url = match env::consts::OS {
+                "macos" | "linux" => release
+                    .assets
+                    .iter()
+                    .find(|asset| asset.name.ends_with("-installer.sh")),
+                "windows" => release
+                    .assets
+                    .iter()
+                    .find(|asset| asset.name.ends_with("-installer.ps1")),
+                _ => unreachable!(),
+            };
+
+            let installer_url = if let Some(installer_url) = installer_url {
+                installer_url
+            } else {
+                return Err(AxoupdateError::NoInstallerForPackage {});
+            };
+
+            let extension = if cfg!(windows) { ".ps1" } else { ".sh" };
+
+            let installer_path =
+                Utf8PathBuf::try_from(tempdir.path().join(format!("installer{extension}")))?;
+
+            #[cfg(unix)]
+            {
+                let installer_file = File::create(&installer_path)?;
+                let mut perms = installer_file.metadata()?.permissions();
+                perms.set_mode(0o744);
+                installer_file.set_permissions(perms)?;
+            }
+
+            let client = reqwest::Client::new();
+            let download = client
+                .get(&installer_url.browser_download_url)
+                .header(ACCEPT, "application/octet-stream")
+                .send()
+                .await?
+                .text()
+                .await?;
+
+            LocalAsset::write_new_all(&download, &installer_path)?;
+
+            installer_path
         };
-
-        let extension = if cfg!(windows) { ".ps1" } else { ".sh" };
-        let installer_path =
-            Utf8PathBuf::try_from(tempdir.path().join(format!("installer{extension}")))?;
-
-        #[cfg(unix)]
-        {
-            let installer_file = File::create(&installer_path)?;
-            let mut perms = installer_file.metadata()?.permissions();
-            perms.set_mode(0o744);
-            installer_file.set_permissions(perms)?;
-        }
-
-        let client = reqwest::Client::new();
-        let download = client
-            .get(&installer_url.browser_download_url)
-            .header(ACCEPT, "application/octet-stream")
-            .send()
-            .await?
-            .text()
-            .await?;
-
-        LocalAsset::write_new_all(&download, &installer_path)?;
 
         // Before we update, move ourselves to a temporary directory.
         // This is necessary because Windows won't let an actively-running
