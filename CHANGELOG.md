@@ -1,3 +1,11 @@
+# Version 0.4.0 (2024-04-08)
+
+This release contains a few new features and fixes:
+
+- Pagination has been implemented for the GitHub API, making it possible to query for specific releases older than the 30 most recent versions. ([#70](https://github.com/axodotdev/axoupdater/pull/70)
+- Improved version parsing and handling has been adding, ensuring that axoupdater will no longer try to pick an older stable version if the user is already running on a newer release. ([#72](https://github.com/axodotdev/axoupdater/pull/72))
+- Added a test helper to simplify end-to-end self-updater tests for users of the axoupdater library. ([#76](https://github.com/axodotdev/axoupdater/pull/76))
+
 # Version 0.3.6 (2024-04-05)
 
 This is a minor bugfix release. It updates the ordering of axo releases queries to reflect changes to the deployed API.
