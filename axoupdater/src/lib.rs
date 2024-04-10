@@ -931,10 +931,7 @@ async fn get_specific_github_version(
 }
 
 #[cfg(feature = "github_releases")]
-async fn get_releases(
-    client: &reqwest::Client,
-    url: &str,
-) -> AxoupdateResult<reqwest::Response> {
+async fn get_releases(client: &reqwest::Client, url: &str) -> AxoupdateResult<reqwest::Response> {
     Ok(client
         .get(url)
         .header(ACCEPT, "application/json")
