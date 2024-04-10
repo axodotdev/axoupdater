@@ -1,3 +1,7 @@
+# Version 0.4.1 (2024-04-10)
+
+This is a minor patch release to preserve more http error info in cases where GitHub is flaking out ([#80](https://github.com/axodotdev/axoupdater/pull/80)).
+
 # Version 0.4.0 (2024-04-08)
 
 This release contains a few new features and fixes:
