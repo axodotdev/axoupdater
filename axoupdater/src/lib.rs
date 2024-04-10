@@ -931,13 +931,8 @@ async fn get_specific_github_version(
 }
 
 #[cfg(feature = "github_releases")]
-async fn get_releases(
-    client: &reqwest::Client,
-    url: &str,
-    name: &str,
-    app_name: &str,
-) -> AxoupdateResult<reqwest::Response> {
-    client
+async fn get_releases(client: &reqwest::Client, url: &str) -> AxoupdateResult<reqwest::Response> {
+    Ok(client
         .get(url)
         .header(ACCEPT, "application/json")
         .header(
@@ -947,11 +942,7 @@ async fn get_releases(
         .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
         .await?
-        .error_for_status()
-        .map_err(|_| AxoupdateError::ReleaseNotFound {
-            name: name.to_owned(),
-            app_name: app_name.to_owned(),
-        })
+        .error_for_status()?)
 }
 
 // The format of the header looks like so:
@@ -987,7 +978,7 @@ async fn get_github_releases(
     let mut data: Vec<Release> = vec![];
 
     while pages_remain {
-        let resp = get_releases(&client, &url, name, app_name).await?;
+        let resp = get_releases(&client, &url).await?;
 
         let headers = resp.headers();
         let link_header = &headers[reqwest::header::LINK]
