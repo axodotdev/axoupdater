@@ -3,7 +3,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::{get_config_path, ReleaseSourceType};
+use crate::{receipt::get_config_path, ReleaseSourceType};
 
 static RECEIPT_TEMPLATE: &str = r#"{"binaries":[BINARIES],"install_prefix":"INSTALL_PREFIX","provider":{"source":"cargo-dist","version":"0.10.0-prerelease.1"},"source":{"app_name":"APP_NAME","name":"PACKAGE","owner":"OWNER","release_type":"RELEASE_TYPE"},"version":"VERSION"}"#;
 

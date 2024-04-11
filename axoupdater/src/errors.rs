@@ -1,3 +1,5 @@
+//! Errors
+
 use miette::Diagnostic;
 use thiserror::Error;
 
