@@ -513,6 +513,17 @@ impl AxoUpdater {
             .block_on(self.run())
     }
 
+    /// Queries for new releases and then returns the detected version.
+    pub async fn query_new_version(&mut self) -> AxoupdateResult<Option<&Version>> {
+        self.fetch_release().await?;
+
+        if let Some(release) = &self.requested_release {
+            Ok(Some(&release.version))
+        } else {
+            Ok(None)
+        }
+    }
+
     async fn fetch_release(&mut self) -> AxoupdateResult<()> {
         let Some(app_name) = &self.name else {
             return Err(AxoupdateError::NotConfigured {
