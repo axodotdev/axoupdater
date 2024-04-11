@@ -148,6 +148,16 @@ impl AxoUpdater {
         })
     }
 
+    /// Explicitly configures the release source as an alternative to
+    /// reading it from the install receipt. This can be useful for tasks
+    /// which want to query the new version without actually performing an
+    /// upgrade.
+    pub fn set_release_source(&mut self, source: ReleaseSource) -> &mut AxoUpdater {
+        self.source = Some(source);
+
+        self
+    }
+
     /// Attempts to load an install receipt in order to prepare for an update.
     /// If present and valid, the install receipt is used to populate the
     /// `source` and `current_version` fields.
