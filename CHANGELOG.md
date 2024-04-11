@@ -1,3 +1,11 @@
+# Version 0.5.0 (2024-04-11)
+
+This release contains a few new features targeted primarily at testing environments.
+
+- A new feature enables forcing axoupdater to call a custom installer at a specified path on disk instead of downloading a new release. This is only expected to be useful for testing. ([#77](https://github.com/axodotdev/axoupdater/pull/77))
+- It's now possible to query for a new release without performing an update. ([#78](https://github.com/axodotdev/axoupdater/pull/78))
+- It's now possible to manually specify the release source used for querying new releases without needing to read it from an install receipt. ([#81](https://github.com/axodotdev/axoupdater/pull/81))
+
 # Version 0.4.1 (2024-04-10)
 
 This is a minor patch release to preserve more http error info in cases where GitHub is flaking out ([#80](https://github.com/axodotdev/axoupdater/pull/80)).
