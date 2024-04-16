@@ -1,3 +1,7 @@
+# Version 0.5.1 (2024-04-16)
+
+This release relaxes the range of the axoasset dependency.
+
 # Version 0.5.0 (2024-04-11)
 
 This release contains a few new features targeted primarily at testing environments.
