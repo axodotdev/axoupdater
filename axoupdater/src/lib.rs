@@ -205,8 +205,8 @@ impl AxoUpdater {
 
     /// Configures AxoUpdater to use a specific installer for the new release
     /// instead of downloading it from the release source.
-    pub fn configure_installer_path(&mut self, path: Utf8PathBuf) -> &mut AxoUpdater {
-        self.installer_path = Some(path);
+    pub fn configure_installer_path(&mut self, path: impl Into<Utf8PathBuf>) -> &mut AxoUpdater {
+        self.installer_path = Some(path.into().to_owned());
 
         self
     }
@@ -481,5 +481,39 @@ fn get_app_name() -> Option<String> {
             .map(|s| s.to_owned())
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+
+    use crate::AxoUpdater;
+
+    #[test]
+    fn test_installer_path_str() {
+        let mut updater = AxoUpdater::new();
+        updater.configure_installer_path("/tmp");
+    }
+
+    #[test]
+    fn test_installer_path_string() {
+        let mut updater = AxoUpdater::new();
+        updater.configure_installer_path("/tmp".to_string());
+    }
+
+    #[test]
+    fn test_installer_path() {
+        let mut updater = AxoUpdater::new();
+        let path = Path::new("/tmp");
+        updater.configure_installer_path(&path.to_string_lossy());
+    }
+
+    #[test]
+    fn test_installer_pathbuf() {
+        let mut updater = AxoUpdater::new();
+        let mut path = PathBuf::new();
+        path.push("/tmp");
+        updater.configure_installer_path(&path.to_string_lossy());
     }
 }
