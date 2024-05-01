@@ -41,15 +41,20 @@ pub(crate) async fn get_latest_github_release(
     name: &str,
     owner: &str,
     app_name: &str,
+    token: &Option<String>,
 ) -> AxoupdateResult<Option<Release>> {
     let client = reqwest::Client::new();
-    let gh_release: GithubRelease = client
+    let mut request = client
         .get(format!("{GITHUB_API}/repos/{owner}/{name}/releases/latest"))
         .header(ACCEPT, "application/json")
         .header(
             USER_AGENT,
             format!("axoupdate/{}", env!("CARGO_PKG_VERSION")),
-        )
+        );
+    if let Some(token) = token {
+        request = request.bearer_auth(token);
+    }
+    let gh_release: GithubRelease = request
         .send()
         .await?
         .error_for_status()
@@ -81,9 +86,10 @@ pub(crate) async fn get_specific_github_tag(
     owner: &str,
     app_name: &str,
     tag: &str,
+    token: &Option<String>,
 ) -> AxoupdateResult<Release> {
     let client = reqwest::Client::new();
-    let gh_release: GithubRelease = client
+    let mut request = client
         .get(format!(
             "{GITHUB_API}/repos/{owner}/{name}/releases/tags/{tag}"
         ))
@@ -91,7 +97,11 @@ pub(crate) async fn get_specific_github_tag(
         .header(
             USER_AGENT,
             format!("axoupdate/{}", env!("CARGO_PKG_VERSION")),
-        )
+        );
+    if let Some(token) = token {
+        request = request.bearer_auth(token);
+    }
+    let gh_release: GithubRelease = request
         .send()
         .await?
         .error_for_status()
@@ -111,8 +121,9 @@ pub(crate) async fn get_specific_github_version(
     owner: &str,
     app_name: &str,
     version: &Version,
+    token: &Option<String>,
 ) -> AxoupdateResult<Release> {
-    let releases = get_github_releases(name, owner, app_name).await?;
+    let releases = get_github_releases(name, owner, app_name, token).await?;
     let release = releases.into_iter().find(|r| &r.version == version);
 
     if let Some(release) = release {
@@ -130,6 +141,7 @@ pub(crate) async fn get_github_releases(
     name: &str,
     owner: &str,
     app_name: &str,
+    token: &Option<String>,
 ) -> AxoupdateResult<Vec<Release>> {
     let client = reqwest::Client::new();
     let mut url = format!("{GITHUB_API}/repos/{owner}/{name}/releases");
@@ -137,7 +149,7 @@ pub(crate) async fn get_github_releases(
     let mut data: Vec<Release> = vec![];
 
     while pages_remain {
-        let resp = get_releases(&client, &url).await?;
+        let resp = get_releases(&client, &url, token).await?;
 
         let headers = resp.headers();
         let link_header = &headers[reqwest::header::LINK]
@@ -193,18 +205,20 @@ fn get_next_url(link_header: &str) -> Option<String> {
 pub(crate) async fn get_releases(
     client: &reqwest::Client,
     url: &str,
+    token: &Option<String>,
 ) -> AxoupdateResult<reqwest::Response> {
-    Ok(client
+    let mut request = client
         .get(url)
         .header(ACCEPT, "application/json")
         .header(
             USER_AGENT,
             format!("axoupdate/{}", env!("CARGO_PKG_VERSION")),
         )
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .send()
-        .await?
-        .error_for_status()?)
+        .header("X-GitHub-Api-Version", "2022-11-28");
+    if let Some(token) = token {
+        request = request.bearer_auth(token);
+    }
+    Ok(request.send().await?.error_for_status()?)
 }
 
 impl Release {

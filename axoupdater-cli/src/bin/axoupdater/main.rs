@@ -30,6 +30,10 @@ fn real_main(cli: &CliApp<CliArgs>) -> Result<(), miette::Report> {
     let mut updater = AxoUpdater::new_for_updater_executable()?;
     updater.load_receipt()?;
 
+    if let Ok(token) = std::env::var("AXOUPDATER_GITHUB_TOKEN") {
+        updater.set_github_token(&token);
+    }
+
     let specifier = if let Some(tag) = &cli.config.tag {
         axoupdater::UpdateRequest::SpecificTag(tag.clone())
     } else if let Some(version) = &cli.config.version {
