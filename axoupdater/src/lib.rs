@@ -231,6 +231,14 @@ impl AxoUpdater {
         self
     }
 
+    /// Configures AxoUpdater with the install path to use. This is only needed
+    /// if installing without an explicit install prefix.
+    pub fn set_install_dir(&mut self, path: impl Into<Utf8PathBuf>) -> &mut AxoUpdater {
+        self.install_prefix = Some(path.into());
+
+        self
+    }
+
     /// Configures axoupdater's update strategy, replacing whatever was
     /// previously configured with the strategy in `version_specifier`.
     pub fn configure_version_specifier(
@@ -527,5 +535,32 @@ mod tests {
         let mut path = PathBuf::new();
         path.push("/tmp");
         updater.configure_installer_path(&path.to_string_lossy());
+    }
+
+    #[test]
+    fn test_install_dir_path_str() {
+        let mut updater = AxoUpdater::new();
+        updater.set_install_dir("/tmp");
+    }
+
+    #[test]
+    fn test_install_dir_path_string() {
+        let mut updater = AxoUpdater::new();
+        updater.set_install_dir("/tmp".to_string());
+    }
+
+    #[test]
+    fn test_install_dir_path() {
+        let mut updater = AxoUpdater::new();
+        let path = Path::new("/tmp");
+        updater.set_install_dir(&path.to_string_lossy());
+    }
+
+    #[test]
+    fn test_install_dir_pathbuf() {
+        let mut updater = AxoUpdater::new();
+        let mut path = PathBuf::new();
+        path.push("/tmp");
+        updater.set_install_dir(&path.to_string_lossy());
     }
 }
