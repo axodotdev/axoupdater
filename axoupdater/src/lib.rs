@@ -84,6 +84,9 @@ pub struct AxoUpdater {
     /// A token to use to query releases from GitHub. If not supplied,
     /// AxoUpdater will perform unauthorized requests.
     tokens: AuthorizationTokens,
+    /// When set to true, skips performing version checks and always assumes
+    /// the software is out of date.
+    always_update: bool,
 }
 
 impl Default for AxoUpdater {
@@ -108,6 +111,7 @@ impl AxoUpdater {
             print_installer_stderr: true,
             installer_path: None,
             tokens: AuthorizationTokens::default(),
+            always_update: false,
         }
     }
 
@@ -124,6 +128,7 @@ impl AxoUpdater {
             print_installer_stderr: true,
             installer_path: None,
             tokens: AuthorizationTokens::default(),
+            always_update: false,
         }
     }
 
@@ -151,6 +156,7 @@ impl AxoUpdater {
             print_installer_stderr: true,
             installer_path: None,
             tokens: AuthorizationTokens::default(),
+            always_update: false,
         })
     }
 
@@ -250,6 +256,13 @@ impl AxoUpdater {
         self
     }
 
+    /// Always upgrade, including when already running the latest version or when the current version isn't known
+    pub fn always_update(&mut self, setting: bool) -> &mut AxoUpdater {
+        self.always_update = setting;
+
+        self
+    }
+
     /// Determines if an update is needed by querying the newest version from
     /// the location specified in `source`.
     /// This includes a blocking network call, so it may be slow.
@@ -262,6 +275,10 @@ impl AxoUpdater {
     /// from a different source, it will return before the network call for a
     /// new version.
     pub async fn is_update_needed(&mut self) -> AxoupdateResult<bool> {
+        if self.always_update {
+            return Ok(true);
+        }
+
         if !self.check_receipt_is_for_this_executable()? {
             return Ok(false);
         }
