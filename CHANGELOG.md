@@ -1,3 +1,11 @@
+# Version 0.6.0 (2024-05-01)
+
+This release contains several new features:
+
+- It's now possible to specify the path to install to via the new `set_install_dir` method. This is especially useful in cases where no install receipt will be loaded, since this value is required for performing full updates.
+- It's now possible to skip querying for new versions and force updates to always be performed; this is done by calling `always_update(bool)` on the updater. This is useful in cases where the version of the installed copy of the software to be updated isn't known, or when using axoupdater to perform a first-time install.
+- It's now possible to specify a GitHub token via the `set_github_token` method. This is useful when the repo to query is private, or in order to opt into the higher rate limit granted to authenticated requests. AxoUpdater uses this in its own tests. The standalone `axoupdater` executable uses this feature by reading optional tokens specified in the `AXOUPDATER_GITHUB_TOKEN` environment variable.
+
 # Version 0.5.1 (2024-04-16)
 
 This release relaxes the range of the axoasset dependency.
