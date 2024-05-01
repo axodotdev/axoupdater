@@ -54,6 +54,12 @@ pub enum UpdateRequest {
     SpecificTag(String),
 }
 
+#[derive(Default)]
+pub(crate) struct AuthorizationTokens {
+    github: Option<String>,
+    axodotdev: Option<String>,
+}
+
 /// Struct representing an updater process
 pub struct AxoUpdater {
     /// The name of the program to update, if specified
@@ -75,6 +81,9 @@ pub struct AxoUpdater {
     /// The path to the installer to use for the new version.
     /// If not specified, downloads the installer from the release source.
     installer_path: Option<Utf8PathBuf>,
+    /// A token to use to query releases from GitHub. If not supplied,
+    /// AxoUpdater will perform unauthorized requests.
+    tokens: AuthorizationTokens,
 }
 
 impl Default for AxoUpdater {
@@ -98,6 +107,7 @@ impl AxoUpdater {
             print_installer_stdout: true,
             print_installer_stderr: true,
             installer_path: None,
+            tokens: AuthorizationTokens::default(),
         }
     }
 
@@ -113,6 +123,7 @@ impl AxoUpdater {
             print_installer_stdout: true,
             print_installer_stderr: true,
             installer_path: None,
+            tokens: AuthorizationTokens::default(),
         }
     }
 
@@ -139,6 +150,7 @@ impl AxoUpdater {
             print_installer_stdout: true,
             print_installer_stderr: true,
             installer_path: None,
+            tokens: AuthorizationTokens::default(),
         })
     }
 
