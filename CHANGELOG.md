@@ -1,3 +1,7 @@
+# Version 0.6.1 (2024-05-02)
+
+This release reexports the `Version` type to simplify calling `set_current_version`.
+
 # Version 0.6.0 (2024-05-01)
 
 This release contains several new features:
