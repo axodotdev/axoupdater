@@ -21,7 +21,7 @@ use std::{fs::File, os::unix::fs::PermissionsExt};
 
 use axoasset::LocalAsset;
 use axoprocess::Cmd;
-use axotag::Version;
+pub use axotag::Version;
 use camino::Utf8PathBuf;
 
 use temp_dir::TempDir;
