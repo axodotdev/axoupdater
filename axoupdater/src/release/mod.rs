@@ -1,9 +1,8 @@
 use std::fmt;
 
-use axotag::Version;
 use serde::Deserialize;
 
-use crate::{errors::*, AuthorizationTokens, AxoUpdater, UpdateRequest};
+use crate::{errors::*, AuthorizationTokens, AxoUpdater, UpdateRequest, Version};
 
 #[cfg(feature = "axo_releases")]
 pub(crate) mod axodotdev;
