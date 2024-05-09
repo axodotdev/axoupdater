@@ -149,15 +149,22 @@ pub(crate) async fn get_github_releases(
     let mut data: Vec<Release> = vec![];
 
     while pages_remain {
+        // fetch the releases
         let resp = get_releases(&client, &url, token).await?;
 
+        // collect the response headers
         let headers = resp.headers();
-        let link_header = &headers[reqwest::header::LINK]
-            .to_str()
-            .expect("header was not ascii")
-            .to_string();
-        pages_remain = link_header.contains("rel=\"next\"");
+        let link_header = &headers
+            .get(reqwest::header::LINK)
+            .as_ref()
+            .map(|link_header_val| {
+                link_header_val
+                    .to_str()
+                    .expect("header was not ascii")
+                    .to_string()
+            });
 
+        // append the data
         let mut body: Vec<Release> = resp
             .json::<Vec<GithubRelease>>()
             .await?
@@ -165,11 +172,18 @@ pub(crate) async fn get_github_releases(
             .filter_map(|gh| Release::try_from_github(app_name, gh).ok())
             .collect();
         data.append(&mut body);
-        dbg!(&data);
 
-        if pages_remain {
-            url = get_next_url(link_header).expect("detected a next but it was a lie");
-        }
+        // check headers to see pages remain and if they do update the URL
+        pages_remain = if let Some(link_header) = link_header {
+            if link_header.contains("rel=\"next\"") {
+                url = get_next_url(link_header).expect("detected a next but it was a lie");
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
     }
 
     Ok(data
