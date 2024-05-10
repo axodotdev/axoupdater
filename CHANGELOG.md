@@ -1,3 +1,8 @@
+# Version 0.6.2 (2024-05-09)
+
+This release fixes a bug which could prevent fetching release information from
+GitHub for repositories with under 30 releases ([#106](https://github.com/axodotdev/axoupdater/pull/106)).
+
 # Version 0.6.1 (2024-05-02)
 
 This release reexports the `Version` type to simplify calling `set_current_version`.
