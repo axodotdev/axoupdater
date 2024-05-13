@@ -20,6 +20,17 @@ pub struct InstallReceipt {
     pub source: ReleaseSource,
     /// Installed version
     pub version: String,
+    /// Information about the tool used to produce this receipt
+    pub provider: ReceiptProvider,
+}
+
+/// Tool used to produce this install receipt
+#[derive(Clone, Debug, Deserialize)]
+pub struct ReceiptProvider {
+    /// The name of the tool used to create this receipt
+    pub source: String,
+    /// The version of the above tool
+    pub version: String,
 }
 
 impl AxoUpdater {
@@ -37,6 +48,13 @@ impl AxoUpdater {
 
         self.source = Some(receipt.source);
         self.current_version = Some(receipt.version.parse::<Version>()?);
+
+        let provider = crate::Provider {
+            source: receipt.provider.source,
+            version: receipt.provider.version.parse::<Version>()?,
+        };
+
+        self.current_version_installed_by = Some(provider);
         self.install_prefix = Some(receipt.install_prefix);
 
         Ok(self)

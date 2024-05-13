@@ -8,6 +8,7 @@ mod receipt;
 mod release;
 pub mod test;
 
+use axotag::semver::VersionReq;
 pub use errors::*;
 pub use release::*;
 
@@ -60,6 +61,14 @@ pub(crate) struct AuthorizationTokens {
     axodotdev: Option<String>,
 }
 
+/// Tool used to produce this install receipt
+pub struct Provider {
+    /// The name of the tool used to create this receipt
+    pub source: String,
+    /// The version of the above tool
+    pub version: Version,
+}
+
 /// Struct representing an updater process
 pub struct AxoUpdater {
     /// The name of the program to update, if specified
@@ -72,6 +81,8 @@ pub struct AxoUpdater {
     requested_release: Option<Release>,
     /// The current version number
     current_version: Option<Version>,
+    /// Version of cargo-dist current version is installed by
+    current_version_installed_by: Option<Provider>,
     /// Information about the install prefix of the previous version
     install_prefix: Option<Utf8PathBuf>,
     /// Whether to display the underlying installer's stdout
@@ -106,6 +117,7 @@ impl AxoUpdater {
             version_specifier: UpdateRequest::Latest,
             requested_release: None,
             current_version: None,
+            current_version_installed_by: None,
             install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
@@ -123,6 +135,7 @@ impl AxoUpdater {
             version_specifier: UpdateRequest::Latest,
             requested_release: None,
             current_version: None,
+            current_version_installed_by: None,
             install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
@@ -151,6 +164,7 @@ impl AxoUpdater {
             version_specifier: UpdateRequest::Latest,
             requested_release: None,
             current_version: None,
+            current_version_installed_by: None,
             install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
@@ -334,9 +348,13 @@ impl AxoUpdater {
         };
 
         let mut install_root = install_prefix.to_owned();
-        if install_root.file_name() == Some("bin") {
-            if let Some(parent) = install_root.parent() {
-                install_root = parent.to_path_buf();
+        // Works around a bug in cargo-dist between 0.10.0 and 0.15.0, in which
+        // prefix-style workspaces like CARGO_HOME had the prefix incorrectly
+        // set to include the `bin` directory.
+        if let Some(provider) = &self.current_version_installed_by {
+            let req = VersionReq::parse(">= 0.10.0-prerelease.1, < 0.15.0-prerelease.8")?;
+            if provider.source == "cargo-dist" && req.matches(&provider.version) {
+                install_root = root_without_bin(&install_root);
             }
         }
 
@@ -519,6 +537,16 @@ fn get_app_name() -> Option<String> {
     } else {
         None
     }
+}
+
+fn root_without_bin(path: &Utf8PathBuf) -> Utf8PathBuf {
+    if path.file_name() == Some("bin") {
+        if let Some(parent) = path.parent() {
+            return parent.to_path_buf();
+        }
+    }
+
+    path.to_owned()
 }
 
 #[cfg(test)]

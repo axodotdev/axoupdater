@@ -7,7 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use temp_dir::TempDir;
 
 static BIN: &str = env!("CARGO_BIN_EXE_axoupdater");
-static RECEIPT_TEMPLATE: &str = r#"{"binaries":["axolotlsay"],"install_prefix":"INSTALL_PREFIX","provider":{"source":"cargo-dist","version":"0.11.1"},"source":{"app_name":"axolotlsay","name":"cargodisttest","owner":"mistydemeo","release_type":"github"},"version":"VERSION"}"#;
+static RECEIPT_TEMPLATE: &str = r#"{"binaries":["axolotlsay"],"install_prefix":"INSTALL_PREFIX","provider":{"source":"cargo-dist","version":"CARGO_DIST_VERSION"},"source":{"app_name":"axolotlsay","name":"cargodisttest","owner":"mistydemeo","release_type":"github"},"version":"VERSION"}"#;
 
 // Handle aarch64 later
 fn triple() -> String {
@@ -36,14 +36,19 @@ fn axolotlsay_tarball_path(version: &str) -> String {
     format!("https://github.com/mistydemeo/cargodisttest/releases/download/v{version}/axolotlsay-{triple}.tar.gz")
 }
 
-fn install_receipt(version: &str, prefix: &Utf8PathBuf) -> String {
+fn install_receipt(version: &str, cargo_dist_version: &str, prefix: &Utf8PathBuf) -> String {
     RECEIPT_TEMPLATE
         .replace("INSTALL_PREFIX", &prefix.to_string().replace('\\', "\\\\"))
+        .replace("CARGO_DIST_VERSION", cargo_dist_version)
         .replace("VERSION", version)
 }
 
-fn write_receipt(version: &str, prefix: &Utf8PathBuf) -> std::io::Result<()> {
-    let contents = install_receipt(version, prefix);
+fn write_receipt(
+    version: &str,
+    cargo_dist_version: &str,
+    prefix: &Utf8PathBuf,
+) -> std::io::Result<()> {
+    let contents = install_receipt(version, cargo_dist_version, prefix);
     let receipt_name = prefix.join("axolotlsay-receipt.json");
     LocalAsset::write_new(&contents, receipt_name).unwrap();
 
@@ -94,7 +99,7 @@ fn test_upgrade() -> std::io::Result<()> {
     std::fs::write(&compressed_path, contents)?;
 
     // Write the receipt for the updater to use
-    write_receipt(base_version, &bindir.to_path_buf())?;
+    write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
@@ -153,7 +158,7 @@ fn test_upgrade_allow_prerelease() -> std::io::Result<()> {
     std::fs::write(&compressed_path, contents)?;
 
     // Write the receipt for the updater to use
-    write_receipt(base_version, &bindir.to_path_buf())?;
+    write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
@@ -216,7 +221,7 @@ fn test_upgrade_to_specific_version() -> std::io::Result<()> {
     std::fs::write(&compressed_path, contents)?;
 
     // Write the receipt for the updater to use
-    write_receipt(base_version, &bindir.to_path_buf())?;
+    write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
@@ -270,7 +275,7 @@ fn test_downgrade_to_specific_version() -> std::io::Result<()> {
     std::fs::write(&compressed_path, contents)?;
 
     // Write the receipt for the updater to use
-    write_receipt(base_version, &bindir.to_path_buf())?;
+    write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
@@ -337,7 +342,7 @@ fn test_downgrade_to_specific_old_version() -> std::io::Result<()> {
     std::fs::write(&compressed_path, contents)?;
 
     // Write the receipt for the updater to use
-    write_receipt(base_version, &bindir.to_path_buf())?;
+    write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
@@ -364,6 +369,72 @@ fn test_downgrade_to_specific_old_version() -> std::io::Result<()> {
     let output = new_axolotlsay.output().unwrap();
     let stderr_string = String::from_utf8(output.stdout).unwrap();
     assert_eq!(stderr_string, format!("axolotlsay {}\n", target_version));
+
+    Ok(())
+}
+
+// Similar to `test_upgrade` but tests releases created after the
+// cargo-dist receipt prefix bug was fixed; see:
+// https://github.com/axodotdev/cargo-dist/pull/1037
+#[test]
+fn test_upgrade_from_prefix_with_no_bin() -> std::io::Result<()> {
+    let tempdir = TempDir::new()?;
+    let prefix = Utf8PathBuf::from_path_buf(tempdir.path().to_path_buf()).unwrap();
+    let bindir_path = &tempdir.path().join("bin");
+    let bindir = Utf8Path::from_path(bindir_path).unwrap();
+    std::fs::create_dir_all(bindir)?;
+
+    // The first cargodisttest release with the "/bin" bug fixed
+    let base_version = "0.2.133";
+
+    let url = axolotlsay_tarball_path(base_version);
+
+    let mut response = reqwest::blocking::get(url)
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+
+    let compressed_path =
+        Utf8PathBuf::from_path_buf(tempdir.path().join("axolotlsay.tar.gz")).unwrap();
+    let mut contents = vec![];
+    response.read_to_end(&mut contents)?;
+    std::fs::write(&compressed_path, contents)?;
+
+    // Write the receipt for the updater to use
+    // 0.15.0 is the first cargo-dist that published fixed installers for the
+    // /bin bug mentioned above
+    write_receipt(base_version, "0.15.0", &prefix)?;
+
+    LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
+
+    // Now install our copy of the updater instead of the one axolotlsay came with
+    let updater_path = bindir.join(format!("axolotlsay-update{EXE_SUFFIX}"));
+    std::fs::copy(BIN, &updater_path)?;
+
+    let mut updater = Cmd::new(&updater_path, "run updater");
+    updater.env("AXOUPDATER_CONFIG_PATH", prefix);
+    // We'll do that manually
+    updater.check(false);
+    let result = updater.output();
+    assert!(result.is_ok());
+    let res = result.unwrap();
+    let output_stdout = String::from_utf8(res.stdout).unwrap();
+    let output_stderr = String::from_utf8(res.stderr).unwrap();
+
+    // Now let's check the version we just updated to
+    let new_axolotlsay_path = &bindir.join(format!("axolotlsay{EXE_SUFFIX}"));
+    assert!(
+        new_axolotlsay_path.exists(),
+        "update result was\nstdout\n{}\nstderr\n{}",
+        output_stdout,
+        output_stderr
+    );
+    let mut new_axolotlsay = Cmd::new(new_axolotlsay_path, "version test");
+    new_axolotlsay.arg("--version");
+    let output = new_axolotlsay.output().unwrap();
+    let stderr_string = String::from_utf8(output.stdout).unwrap();
+    assert!(stderr_string.starts_with("axolotlsay "));
+    assert_ne!(stderr_string, format!("axolotlsay {}\n", base_version));
 
     Ok(())
 }
