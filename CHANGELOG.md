@@ -1,3 +1,7 @@
+# Version 0.6.3 (2024-05-14)
+
+This release removes a temporary workaround for an upstream cargo-dist bug, removing an ambiguity in install-receipts that pointed at a dir named "bin" for cargo-dist 0.15.0 and later.
+
 # Version 0.6.2 (2024-05-09)
 
 This release fixes a bug which could prevent fetching release information from
