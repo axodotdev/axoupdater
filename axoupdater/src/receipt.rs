@@ -74,8 +74,12 @@ impl AxoUpdater {
         } else {
             current_exe_path
         };
-        // If the parent dir is a "bin" dir, strip it to get the true root
-        if current_exe_root.file_name() == Some("bin") {
+
+        let receipt_root = self.install_prefix_root_normalized()?;
+
+        // If the parent dir is a "bin" dir, strip it to get the true root,
+        // but only if the true install root isn't itself a `bin` dir.
+        if current_exe_root.file_name() == Some("bin") && receipt_root.file_name() != Some("bin") {
             if let Some(parent) = current_exe_root.parent() {
                 current_exe_root = parent.to_path_buf();
             }
@@ -83,7 +87,7 @@ impl AxoUpdater {
 
         // Looks like this EXE comes from a different source than the install
         // receipt
-        if current_exe_root != self.install_prefix_root_normalized()? {
+        if current_exe_root != receipt_root {
             return Ok(false);
         }
 
