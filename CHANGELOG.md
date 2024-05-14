@@ -1,3 +1,10 @@
+# Version 0.6.4 (2024-05-14)
+
+This release contains two bugfixes for the previous release:
+
+* Improved path handling in `check_receipt_is_for_this_executable`.
+* Fixed an issue where checking cargo-dist versions from the receipt would fail if the cargo-dist version was a prerelease.
+
 # Version 0.6.3 (2024-05-14)
 
 This release removes a temporary workaround for an upstream cargo-dist bug, removing an ambiguity in install-receipts that pointed at a dir named "bin" for cargo-dist 0.15.0 and later.
