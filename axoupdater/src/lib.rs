@@ -8,7 +8,6 @@ mod receipt;
 mod release;
 pub mod test;
 
-use axotag::semver::VersionReq;
 pub use errors::*;
 pub use release::*;
 
@@ -352,8 +351,10 @@ impl AxoUpdater {
         // prefix-style workspaces like CARGO_HOME had the prefix incorrectly
         // set to include the `bin` directory.
         if let Some(provider) = &self.current_version_installed_by {
-            let req = VersionReq::parse(">= 0.10.0-prerelease.1, < 0.15.0-prerelease.8")?;
-            if provider.source == "cargo-dist" && req.matches(&provider.version) {
+            let min = Version::parse("0.10.0-prerelease.1").expect("failed to parse min version?!");
+            let max = Version::parse("0.15.0-prerelease.8").expect("failed to parse max version?!");
+            if provider.source == "cargo-dist" && provider.version >= min && provider.version < max
+            {
                 install_root = root_without_bin(&install_root);
             }
         }
