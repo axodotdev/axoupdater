@@ -24,7 +24,7 @@ use axoprocess::Cmd;
 pub use axotag::Version;
 use camino::Utf8PathBuf;
 
-use temp_dir::TempDir;
+use tempfile::TempDir;
 
 /// Provides information about the result of the upgrade operation
 pub struct UpdateResult {
