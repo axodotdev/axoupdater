@@ -24,7 +24,7 @@ use axoprocess::Cmd;
 pub use axotag::Version;
 use camino::Utf8PathBuf;
 
-use temp_dir::TempDir;
+use tempfile::TempDir;
 
 /// Provides information about the result of the upgrade operation
 pub struct UpdateResult {
@@ -448,7 +448,20 @@ impl AxoUpdater {
         // NOTE: this TempDir needs to be held alive for the whole function.
         let temp_root;
         let to_restore = if cfg!(target_family = "windows") {
-            temp_root = TempDir::new()?;
+            // If we know the install prefix, place the temporary directory for
+            // the executable there. This is because the `rename` syscall can't
+            // rename an executable across filesystem bounds, and there's a
+            // chance the system temporary directory could be on a different
+            // drive than the executable is.
+            // (A copy-and-delete move won't work because Windows won't let us
+            // delete a running executable - the same reason we're moving it out
+            // of the way to begin with!)
+            // See https://github.com/axodotdev/axoupdater/issues/120.
+            temp_root = if let Ok(prefix) = self.install_prefix_root() {
+                TempDir::new_in(prefix)?
+            } else {
+                TempDir::new()?
+            };
             let old_path = std::env::current_exe()?;
             let old_filename = old_path.file_name().expect("current binary has no name!?");
             let ourselves = temp_root.path().join(old_filename);

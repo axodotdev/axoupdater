@@ -4,7 +4,7 @@ use std::io::Read;
 use axoasset::LocalAsset;
 use axoprocess::Cmd;
 use camino::{Utf8Path, Utf8PathBuf};
-use temp_dir::TempDir;
+use tempfile::TempDir;
 
 static BIN: &str = env!("CARGO_BIN_EXE_axoupdater");
 static RECEIPT_TEMPLATE: &str = r#"{"binaries":["axolotlsay"],"install_prefix":"INSTALL_PREFIX","provider":{"source":"cargo-dist","version":"CARGO_DIST_VERSION"},"source":{"app_name":"axolotlsay","name":"cargodisttest","owner":"mistydemeo","release_type":"github"},"version":"VERSION"}"#;
