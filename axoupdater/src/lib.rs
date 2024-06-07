@@ -88,6 +88,8 @@ pub struct AxoUpdater {
     print_installer_stdout: bool,
     /// Whether to display the underlying installer's stderr
     print_installer_stderr: bool,
+    /// Whether to load native root certs for TLS (if false, use WebPKI root certs)
+    native_certs: bool,
     /// The path to the installer to use for the new version.
     /// If not specified, downloads the installer from the release source.
     installer_path: Option<Utf8PathBuf>,
@@ -120,6 +122,7 @@ impl AxoUpdater {
             install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
+            native_certs: false,
             installer_path: None,
             tokens: AuthorizationTokens::default(),
             always_update: false,
@@ -138,6 +141,7 @@ impl AxoUpdater {
             install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
+            native_certs: false,
             installer_path: None,
             tokens: AuthorizationTokens::default(),
             always_update: false,
@@ -167,6 +171,7 @@ impl AxoUpdater {
             install_prefix: None,
             print_installer_stdout: true,
             print_installer_stderr: true,
+            native_certs: false,
             installer_path: None,
             tokens: AuthorizationTokens::default(),
             always_update: false,
@@ -230,6 +235,20 @@ impl AxoUpdater {
     pub fn disable_installer_output(&mut self) -> &mut AxoUpdater {
         self.print_installer_stdout = false;
         self.print_installer_stderr = false;
+
+        self
+    }
+
+    /// Enables loading native root certs for TLS.
+    pub fn enable_native_certs(&mut self) -> &mut AxoUpdater {
+        self.native_certs = true;
+
+        self
+    }
+
+    /// Disables loading native root certs for TLS; WebPKI root certs will be used instead.
+    pub fn disable_native_certs(&mut self) -> &mut AxoUpdater {
+        self.native_certs = false;
 
         self
     }
@@ -426,7 +445,10 @@ impl AxoUpdater {
                 installer_file.set_permissions(perms)?;
             }
 
-            let client = reqwest::Client::new();
+            let client = reqwest::Client::builder()
+                .tls_built_in_webpki_certs(false)
+                .tls_built_in_native_certs(true)
+                .build()?;
             let download = client
                 .get(&installer_url.browser_download_url)
                 .header(reqwest::header::ACCEPT, "application/octet-stream")

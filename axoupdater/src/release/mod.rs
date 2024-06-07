@@ -107,6 +107,7 @@ impl AxoUpdater {
                     &source.owner,
                     &source.app_name,
                     &source.release_type,
+                    self.native_certs,
                     &self.tokens,
                 )
                 .await?
@@ -117,6 +118,7 @@ impl AxoUpdater {
                     &source.owner,
                     &source.app_name,
                     &source.release_type,
+                    self.native_certs,
                     &self.tokens,
                 )
                 .await?
@@ -128,6 +130,7 @@ impl AxoUpdater {
                     &source.app_name,
                     &source.release_type,
                     &version,
+                    self.native_certs,
                     &self.tokens,
                 )
                 .await?
@@ -139,6 +142,7 @@ impl AxoUpdater {
                     &source.app_name,
                     &source.release_type,
                     &version.parse::<Version>()?,
+                    self.native_certs,
                     &self.tokens,
                 )
                 .await?
@@ -163,13 +167,21 @@ pub(crate) async fn get_specific_version(
     app_name: &str,
     release_type: &ReleaseSourceType,
     version: &Version,
+    native_certs: bool,
     tokens: &AuthorizationTokens,
 ) -> AxoupdateResult<Option<Release>> {
     let release = match release_type {
         #[cfg(feature = "github_releases")]
         ReleaseSourceType::GitHub => {
-            github::get_specific_github_version(name, owner, app_name, version, &tokens.github)
-                .await?
+            github::get_specific_github_version(
+                name,
+                owner,
+                app_name,
+                version,
+                native_certs,
+                &tokens.github,
+            )
+            .await?
         }
         #[cfg(not(feature = "github_releases"))]
         ReleaseSourceType::GitHub => {
@@ -198,12 +210,21 @@ pub(crate) async fn get_specific_tag(
     app_name: &str,
     release_type: &ReleaseSourceType,
     tag: &str,
+    native_certs: bool,
     tokens: &AuthorizationTokens,
 ) -> AxoupdateResult<Option<Release>> {
     let release = match release_type {
         #[cfg(feature = "github_releases")]
         ReleaseSourceType::GitHub => {
-            github::get_specific_github_tag(name, owner, app_name, tag, &tokens.github).await?
+            github::get_specific_github_tag(
+                name,
+                owner,
+                app_name,
+                tag,
+                native_certs,
+                &tokens.github,
+            )
+            .await?
         }
         #[cfg(not(feature = "github_releases"))]
         ReleaseSourceType::GitHub => {
@@ -231,12 +252,13 @@ pub(crate) async fn get_release_list(
     owner: &str,
     app_name: &str,
     release_type: &ReleaseSourceType,
+    native_certs: bool,
     tokens: &AuthorizationTokens,
 ) -> AxoupdateResult<Vec<Release>> {
     let releases = match release_type {
         #[cfg(feature = "github_releases")]
         ReleaseSourceType::GitHub => {
-            github::get_github_releases(name, owner, app_name, &tokens.github).await?
+            github::get_github_releases(name, owner, app_name, native_certs, &tokens.github).await?
         }
         #[cfg(not(feature = "github_releases"))]
         ReleaseSourceType::GitHub => {
@@ -262,6 +284,7 @@ pub(crate) async fn get_latest_stable_release(
     owner: &str,
     app_name: &str,
     release_type: &ReleaseSourceType,
+    native_certs: bool,
     tokens: &AuthorizationTokens,
 ) -> AxoupdateResult<Option<Release>> {
     // GitHub has an API to request the latest stable release.
@@ -275,13 +298,15 @@ pub(crate) async fn get_latest_stable_release(
     #[cfg(feature = "github_releases")]
     if release_type == &ReleaseSourceType::GitHub {
         if let Ok(Some(release)) =
-            github::get_latest_github_release(name, owner, app_name, &tokens.github).await
+            github::get_latest_github_release(name, owner, app_name, native_certs, &tokens.github)
+                .await
         {
             return Ok(Some(release));
         }
     }
 
-    let releases = get_release_list(name, owner, app_name, release_type, tokens).await?;
+    let releases =
+        get_release_list(name, owner, app_name, release_type, native_certs, tokens).await?;
     Ok(releases
         .into_iter()
         .filter(|r| !r.prerelease)
@@ -294,8 +319,10 @@ pub(crate) async fn get_latest_maybe_prerelease(
     owner: &str,
     app_name: &str,
     release_type: &ReleaseSourceType,
+    native_certs: bool,
     tokens: &AuthorizationTokens,
 ) -> AxoupdateResult<Option<Release>> {
-    let releases = get_release_list(name, owner, app_name, release_type, tokens).await?;
+    let releases =
+        get_release_list(name, owner, app_name, release_type, native_certs, tokens).await?;
     Ok(releases.into_iter().max_by_key(|r| r.version.clone()))
 }

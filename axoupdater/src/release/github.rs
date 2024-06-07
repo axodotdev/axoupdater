@@ -6,6 +6,7 @@ use axotag::{parse_tag, Version};
 use reqwest::{
     self,
     header::{ACCEPT, USER_AGENT},
+    Client,
 };
 use serde::Deserialize;
 
@@ -41,9 +42,21 @@ pub(crate) async fn get_latest_github_release(
     name: &str,
     owner: &str,
     app_name: &str,
+    native_certs: bool,
     token: &Option<String>,
 ) -> AxoupdateResult<Option<Release>> {
-    let client = reqwest::Client::new();
+    let client = if native_certs {
+        Client::builder()
+            .tls_built_in_webpki_certs(false)
+            .tls_built_in_native_certs(true)
+            .build()?
+    } else {
+        Client::builder()
+            .tls_built_in_webpki_certs(true)
+            .tls_built_in_native_certs(false)
+            .build()?
+    };
+
     let mut request = client
         .get(format!("{GITHUB_API}/repos/{owner}/{name}/releases/latest"))
         .header(ACCEPT, "application/json")
@@ -86,9 +99,21 @@ pub(crate) async fn get_specific_github_tag(
     owner: &str,
     app_name: &str,
     tag: &str,
+    native_certs: bool,
     token: &Option<String>,
 ) -> AxoupdateResult<Release> {
-    let client = reqwest::Client::new();
+    let client = if native_certs {
+        Client::builder()
+            .tls_built_in_webpki_certs(false)
+            .tls_built_in_native_certs(true)
+            .build()?
+    } else {
+        Client::builder()
+            .tls_built_in_webpki_certs(true)
+            .tls_built_in_native_certs(false)
+            .build()?
+    };
+
     let mut request = client
         .get(format!(
             "{GITHUB_API}/repos/{owner}/{name}/releases/tags/{tag}"
@@ -121,9 +146,10 @@ pub(crate) async fn get_specific_github_version(
     owner: &str,
     app_name: &str,
     version: &Version,
+    native_certs: bool,
     token: &Option<String>,
 ) -> AxoupdateResult<Release> {
-    let releases = get_github_releases(name, owner, app_name, token).await?;
+    let releases = get_github_releases(name, owner, app_name, native_certs, token).await?;
     let release = releases.into_iter().find(|r| &r.version == version);
 
     if let Some(release) = release {
@@ -141,9 +167,21 @@ pub(crate) async fn get_github_releases(
     name: &str,
     owner: &str,
     app_name: &str,
+    native_certs: bool,
     token: &Option<String>,
 ) -> AxoupdateResult<Vec<Release>> {
-    let client = reqwest::Client::new();
+    let client = if native_certs {
+        Client::builder()
+            .tls_built_in_webpki_certs(false)
+            .tls_built_in_native_certs(true)
+            .build()?
+    } else {
+        Client::builder()
+            .tls_built_in_webpki_certs(true)
+            .tls_built_in_native_certs(false)
+            .build()?
+    };
+
     let mut url = format!("{GITHUB_API}/repos/{owner}/{name}/releases");
     let mut pages_remain = true;
     let mut data: Vec<Release> = vec![];
@@ -217,7 +255,7 @@ fn get_next_url(link_header: &str) -> Option<String> {
 }
 
 pub(crate) async fn get_releases(
-    client: &reqwest::Client,
+    client: &Client,
     url: &str,
     token: &Option<String>,
 ) -> AxoupdateResult<reqwest::Response> {
