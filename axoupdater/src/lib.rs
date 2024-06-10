@@ -445,10 +445,18 @@ impl AxoUpdater {
                 installer_file.set_permissions(perms)?;
             }
 
-            let client = reqwest::Client::builder()
-                .tls_built_in_webpki_certs(false)
-                .tls_built_in_native_certs(true)
-                .build()?;
+            let client = if self.native_certs {
+                reqwest::Client::builder()
+                    .tls_built_in_webpki_certs(false)
+                    .tls_built_in_native_certs(true)
+                    .build()?
+            } else {
+                reqwest::Client::builder()
+                    .tls_built_in_webpki_certs(true)
+                    .tls_built_in_native_certs(false)
+                    .build()?
+            };
+
             let download = client
                 .get(&installer_url.browser_download_url)
                 .header(reqwest::header::ACCEPT, "application/octet-stream")
