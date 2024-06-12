@@ -1,3 +1,7 @@
+# Version 0.6.6 (2024-06-12)
+
+This release updates several dependencies.
+
 # Version 0.6.5 (2024-05-30)
 
 This release makes us prefer creating temporary files nested under the install directory, avoiding issues with renaming files across filesystems, in cases where the system tempdir is on a separate logic drive.
