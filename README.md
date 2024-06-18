@@ -42,6 +42,31 @@ if AxoUpdater::new_for("axolotlsay").load_receipt()?.run().await? {
 }
 ```
 
+## GitHub Actions and Rate Limits in CI
+
+By default, axoupdater uses unauthenticated GitHub API calls when fetching release information. This is reliable in normal use, but it's much more likely to run into rate limits in the highly artificial environment of a CI test. Axoupdater provides a way to supply a GitHub API token in order to opt into a higher rate limit; if you find your app being rate limited in CI, you may want to opt into it. Cargo-dist uses this in its own tests. Here's a simple example of how you can integrate it into your own app.
+
+We recommend using an environment variable for token configuration so that you don't have to adjust how you call your app at the commandline in tests. We also recommend picking an environment variable name that's specific to your application; it's not uncommon for users to have stale or expired `GITHUB_TOKEN` tokens in their environment, and using that name may cause your app to behave unexpectedly.
+
+First, wherever you construct an updater client, add a check for the environment variable and, if set, pass its value to the `set_github_token()` method:
+
+```rust
+if let Ok(token) = std::env::var("YOUR_APP_GITHUB_TOKEN") {
+    updater.set_github_token(&token);
+}
+```
+
+A sample of how cargo-dist uses this can be found [here](https://github.com/axodotdev/cargo-dist/blob/80f2e19e5aa79b7b1f64beb62ceb07aa71566707/cargo-dist/src/main.rs#L599-L601).
+
+Then, in your CI configuration, assign that variable to the value of the `GITHUB_TOKEN` secret that's automatically assigned by GitHub Actions:
+
+```yaml
+env:
+  YOUR_APP_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+A sample in cargo-dist's CI configuration can be found [here](https://github.com/axodotdev/cargo-dist/blob/80f2e19e5aa79b7b1f64beb62ceb07aa71566707/.github/workflows/ci.yml#L82-L85).
+
 ## Crate features
 
 By default, axoupdater is built with support for both GitHub and Axo releases. If you're using it as a library in your program, and you know ahead of time which backend you're using to host your release assets, you can disable the other library in order to reduce the size of the dependency tree.
