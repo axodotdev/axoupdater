@@ -16,6 +16,11 @@ struct CliArgs {
     /// Allows prereleases when just updating to "latest"
     #[clap(long)]
     prerelease: bool,
+
+    /// Use native root certs instead of WebPKI certs for TLS
+    /// This is often necessary in enterprise environments
+    #[clap(long)]
+    native: bool,
 }
 
 fn real_main(cli: &CliApp<CliArgs>) -> Result<(), miette::Report> {
@@ -32,6 +37,10 @@ fn real_main(cli: &CliApp<CliArgs>) -> Result<(), miette::Report> {
 
     if let Ok(token) = std::env::var("AXOUPDATER_GITHUB_TOKEN") {
         updater.set_github_token(&token);
+    }
+
+    if cli.config.native {
+        updater.enable_native_certs();
     }
 
     let specifier = if let Some(tag) = &cli.config.tag {
