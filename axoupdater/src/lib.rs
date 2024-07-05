@@ -426,10 +426,13 @@ impl AxoUpdater {
                 installer_file.set_permissions(perms)?;
             }
 
-            let client = reqwest::Client::new();
+            let client = axoasset::reqwest::Client::new();
             let download = client
                 .get(&installer_url.browser_download_url)
-                .header(reqwest::header::ACCEPT, "application/octet-stream")
+                .header(
+                    axoasset::reqwest::header::ACCEPT,
+                    "application/octet-stream",
+                )
                 .send()
                 .await?
                 .text()

@@ -14,12 +14,11 @@ readme = "../README.md"
 default = ["axo_releases", "github_releases"]
 axo_releases = ["gazenot"]
 blocking = ["tokio"]
-github_releases = ["reqwest"]
+github_releases = ["axoasset/remote"]
+tls_native_roots = ["axoasset/tls-native-roots"]
 
 [dependencies]
-axoasset = { version = ">= 0.9.0, < 0.11.0", default-features = false, features = [
-    "json-serde",
-] }
+axoasset = { version = "1.0.0", default-features = false, features = ["json-serde"] }
 axoprocess = "0.2.0"
 axotag = { version = "0.2.0" }
 camino = { version = "1.1.6", features = ["serde1"] }
@@ -28,13 +27,7 @@ serde = "1.0.197"
 tempfile = "3.10.1"
 
 # axo releases
-gazenot = { version = "0.3.2", features = ["client_lib"], optional = true }
-
-# github releases
-reqwest = { version = ">=0.11.0", default-features = false, features = [
-    "rustls-tls",
-    "json",
-], optional = true }
+gazenot = { version = "0.3.3", features = ["client_lib"], optional = true }
 
 # blocking API
 tokio = { version = "1.36.0", features = ["full"], optional = true }

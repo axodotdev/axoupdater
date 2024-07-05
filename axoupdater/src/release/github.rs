@@ -2,11 +2,11 @@
 
 use super::{Asset, Release};
 use crate::errors::*;
-use axotag::{parse_tag, Version};
-use reqwest::{
+use axoasset::reqwest::{
     self,
     header::{ACCEPT, USER_AGENT},
 };
+use axotag::{parse_tag, Version};
 use serde::Deserialize;
 
 const GITHUB_API: &str = "https://api.github.com";
