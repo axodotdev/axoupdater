@@ -1,5 +1,7 @@
 # axoupdater
 
+aaa
+
 axoupdater provides an autoupdater program designed for use with [cargo-dist](https://opensource.axo.dev/cargo-dist/). It can be used either as a standalone program, or as a library within your own program. It supports releases hosted on either [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases) or [Axo Releases (in beta)](https://axo.dev).
 
 In order to be able to check information about an installed program, it uses the install receipts produced by cargo-dist since version [0.10.0 or later](https://github.com/axodotdev/cargo-dist/releases/tag/v0.10.0). These install receipts are JSON files containing metadata about the currently-installed version of an app and the version of cargo-dist that produced it; they can be found in `~/.config/APP_NAME` (Linux, Mac) or `%LOCALAPPDATA%\APP_NAME` (Windows).
