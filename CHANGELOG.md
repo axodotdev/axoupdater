@@ -1,3 +1,8 @@
+# Version 0.6.7 (2024-07-05)
+
+This release adds an experimental opt-in tls_native_roots feature.
+
+
 # Version 0.6.6 (2024-06-12)
 
 This release updates several dependencies.
