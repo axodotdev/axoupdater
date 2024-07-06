@@ -1,3 +1,8 @@
+# Version 0.6.8 (2024-07-05)
+
+This release updates cargo-dist.
+
+
 # Version 0.6.7 (2024-07-05)
 
 This release adds an experimental opt-in tls_native_roots feature.
