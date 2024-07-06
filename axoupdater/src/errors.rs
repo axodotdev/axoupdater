@@ -11,7 +11,7 @@ pub type AxoupdateResult<T> = std::result::Result<T, AxoupdateError>;
 pub enum AxoupdateError {
     /// Passed through from Reqwest
     #[error(transparent)]
-    Reqwest(#[from] reqwest::Error),
+    Reqwest(#[from] axoasset::reqwest::Error),
 
     /// Passed through from std::io::Error
     #[error(transparent)]

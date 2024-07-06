@@ -9,26 +9,28 @@ homepage.workspace = true
 readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+tls_native_roots = ["axoupdater/tls_native_roots"]
 
 [dependencies]
 axocli = "0.2.0"
-axoupdater = { version = "=0.6.6", path = "../axoupdater", features = ["blocking"] }
+axoupdater = { version = "=0.6.7", path = "../axoupdater", features = ["blocking"] }
 clap = { version = "4.5.7", features = ["derive"] }
 
 # errors
 miette = "7.2.0"
 
 [dev-dependencies]
-axoasset = { version = "0.10.1", default-features = false, features = [
-    "compression", "compression-tar", "compression-zip"
+axoasset = { version = "1.0.0", default-features = false, features = [
+    "compression", "compression-tar", "compression-zip", "remote"
 ] }
 axoprocess = "0.2.0"
 camino = { version = "1.1.7", features = ["serde1"] }
-reqwest = { version = ">=0.11.0", default-features = false, features = [
-    "blocking",
-    "rustls-tls",
-] }
 tempfile = "3.10.1"
+tokio = { version = "1.36.0", features = ["full"] }
 
 [[bin]]
 name = "axoupdater"
+
+[package.metadata.dist]
+features = ["tls_native_roots"]

@@ -1,5 +1,4 @@
 use std::env::consts::EXE_SUFFIX;
-use std::io::Read;
 
 use axoasset::LocalAsset;
 use axoprocess::Cmd;
@@ -86,17 +85,13 @@ fn test_upgrade() -> std::io::Result<()> {
     let base_version = "0.2.115";
 
     let url = axolotlsay_tarball_path(base_version);
-
-    let mut response = reqwest::blocking::get(url)
-        .unwrap()
-        .error_for_status()
-        .unwrap();
-
     let compressed_path =
         Utf8PathBuf::from_path_buf(tempdir.path().join("axolotlsay.tar.gz")).unwrap();
-    let mut contents = vec![];
-    response.read_to_end(&mut contents)?;
-    std::fs::write(&compressed_path, contents)?;
+
+    let client = axoasset::AxoClient::with_reqwest(axoasset::reqwest::Client::new());
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(client.load_and_write_to_file(&url, &compressed_path))
+        .unwrap();
 
     // Write the receipt for the updater to use
     write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
@@ -111,9 +106,7 @@ fn test_upgrade() -> std::io::Result<()> {
     updater.env("AXOUPDATER_CONFIG_PATH", bindir);
     // We'll do that manually
     updater.check(false);
-    let result = updater.output();
-    assert!(result.is_ok());
-    let res = result.unwrap();
+    let res = updater.output().unwrap();
     let output_stdout = String::from_utf8(res.stdout).unwrap();
     let output_stderr = String::from_utf8(res.stderr).unwrap();
 
@@ -145,17 +138,13 @@ fn test_upgrade_allow_prerelease() -> std::io::Result<()> {
     let base_version = "0.2.115";
 
     let url = axolotlsay_tarball_path(base_version);
-
-    let mut response = reqwest::blocking::get(url)
-        .unwrap()
-        .error_for_status()
-        .unwrap();
-
     let compressed_path =
         Utf8PathBuf::from_path_buf(tempdir.path().join("axolotlsay.tar.gz")).unwrap();
-    let mut contents = vec![];
-    response.read_to_end(&mut contents)?;
-    std::fs::write(&compressed_path, contents)?;
+
+    let client = axoasset::AxoClient::with_reqwest(axoasset::reqwest::Client::new());
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(client.load_and_write_to_file(&url, &compressed_path))
+        .unwrap();
 
     // Write the receipt for the updater to use
     write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
@@ -171,9 +160,7 @@ fn test_upgrade_allow_prerelease() -> std::io::Result<()> {
     updater.arg("--prerelease");
     // We'll do that manually
     updater.check(false);
-    let result = updater.output();
-    assert!(result.is_ok());
-    let res = result.unwrap();
+    let res = updater.output().unwrap();
     let output_stdout = String::from_utf8(res.stdout).unwrap();
     let output_stderr = String::from_utf8(res.stderr).unwrap();
 
@@ -208,17 +195,13 @@ fn test_upgrade_to_specific_version() -> std::io::Result<()> {
     let target_version = "0.2.116";
 
     let url = axolotlsay_tarball_path(base_version);
-
-    let mut response = reqwest::blocking::get(url)
-        .unwrap()
-        .error_for_status()
-        .unwrap();
-
     let compressed_path =
         Utf8PathBuf::from_path_buf(tempdir.path().join("axolotlsay.tar.gz")).unwrap();
-    let mut contents = vec![];
-    response.read_to_end(&mut contents)?;
-    std::fs::write(&compressed_path, contents)?;
+
+    let client = axoasset::AxoClient::with_reqwest(axoasset::reqwest::Client::new());
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(client.load_and_write_to_file(&url, &compressed_path))
+        .unwrap();
 
     // Write the receipt for the updater to use
     write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
@@ -234,8 +217,7 @@ fn test_upgrade_to_specific_version() -> std::io::Result<()> {
     updater.env("AXOUPDATER_CONFIG_PATH", bindir);
     // We'll do that manually
     updater.check(false);
-    let result = updater.output();
-    assert!(result.is_ok());
+    let _res = updater.output().unwrap();
 
     // Now let's check the version we just updated to
     let new_axolotlsay_path = &bindir.join(format!("axolotlsay{EXE_SUFFIX}"));
@@ -262,17 +244,13 @@ fn test_downgrade_to_specific_version() -> std::io::Result<()> {
     let target_version = "0.2.115";
 
     let url = axolotlsay_tarball_path(base_version);
-
-    let mut response = reqwest::blocking::get(url)
-        .unwrap()
-        .error_for_status()
-        .unwrap();
-
     let compressed_path =
         Utf8PathBuf::from_path_buf(tempdir.path().join("axolotlsay.tar.gz")).unwrap();
-    let mut contents = vec![];
-    response.read_to_end(&mut contents)?;
-    std::fs::write(&compressed_path, contents)?;
+
+    let client = axoasset::AxoClient::with_reqwest(axoasset::reqwest::Client::new());
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(client.load_and_write_to_file(&url, &compressed_path))
+        .unwrap();
 
     // Write the receipt for the updater to use
     write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
@@ -288,8 +266,7 @@ fn test_downgrade_to_specific_version() -> std::io::Result<()> {
     updater.env("AXOUPDATER_CONFIG_PATH", bindir);
     // We'll do that manually
     updater.check(false);
-    let result = updater.output();
-    assert!(result.is_ok());
+    let _res = updater.output().unwrap();
 
     // Now let's check the version we just updated to
     let new_axolotlsay_path = &bindir.join(format!("axolotlsay{EXE_SUFFIX}"));
@@ -329,17 +306,13 @@ fn test_downgrade_to_specific_old_version() -> std::io::Result<()> {
     let target_version = "0.2.50";
 
     let url = axolotlsay_tarball_path(base_version);
-
-    let mut response = reqwest::blocking::get(url)
-        .unwrap()
-        .error_for_status()
-        .unwrap();
-
     let compressed_path =
         Utf8PathBuf::from_path_buf(tempdir.path().join("axolotlsay.tar.gz")).unwrap();
-    let mut contents = vec![];
-    response.read_to_end(&mut contents)?;
-    std::fs::write(&compressed_path, contents)?;
+
+    let client = axoasset::AxoClient::with_reqwest(axoasset::reqwest::Client::new());
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(client.load_and_write_to_file(&url, &compressed_path))
+        .unwrap();
 
     // Write the receipt for the updater to use
     write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
@@ -358,8 +331,7 @@ fn test_downgrade_to_specific_old_version() -> std::io::Result<()> {
     updater.env("CARGO_HOME", tempdir.path());
     // We'll do that manually
     updater.check(false);
-    let result = updater.output();
-    assert!(result.is_ok());
+    let _res = updater.output().unwrap();
 
     // Now let's check the version we just updated to
     let new_axolotlsay_path = &bindir.join(format!("axolotlsay{EXE_SUFFIX}"));
@@ -388,17 +360,13 @@ fn test_upgrade_from_prefix_with_no_bin() -> std::io::Result<()> {
     let base_version = "0.2.133";
 
     let url = axolotlsay_tarball_path(base_version);
-
-    let mut response = reqwest::blocking::get(url)
-        .unwrap()
-        .error_for_status()
-        .unwrap();
-
     let compressed_path =
         Utf8PathBuf::from_path_buf(tempdir.path().join("axolotlsay.tar.gz")).unwrap();
-    let mut contents = vec![];
-    response.read_to_end(&mut contents)?;
-    std::fs::write(&compressed_path, contents)?;
+
+    let client = axoasset::AxoClient::with_reqwest(axoasset::reqwest::Client::new());
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(client.load_and_write_to_file(&url, &compressed_path))
+        .unwrap();
 
     // Write the receipt for the updater to use
     // 0.15.0 is the first cargo-dist that published fixed installers for the
@@ -415,9 +383,8 @@ fn test_upgrade_from_prefix_with_no_bin() -> std::io::Result<()> {
     updater.env("AXOUPDATER_CONFIG_PATH", prefix);
     // We'll do that manually
     updater.check(false);
-    let result = updater.output();
-    assert!(result.is_ok());
-    let res = result.unwrap();
+    let res = updater.output().unwrap();
+
     let output_stdout = String::from_utf8(res.stdout).unwrap();
     let output_stderr = String::from_utf8(res.stderr).unwrap();
 
