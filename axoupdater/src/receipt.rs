@@ -104,7 +104,7 @@ pub(crate) fn get_config_path(app_name: &str) -> AxoupdateResult<Utf8PathBuf> {
         let home = if cfg!(windows) {
             env::var("LOCALAPPDATA").map(PathBuf::from).ok()
         } else {
-            homedir::get_my_home()?.map(|path| path.join(".config"))
+            homedir::my_home()?.map(|path| path.join(".config"))
         };
         let Some(home) = home else {
             return Err(AxoupdateError::NoHome {});
