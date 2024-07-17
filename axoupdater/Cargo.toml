@@ -30,7 +30,7 @@ tempfile = "3.10.1"
 gazenot = { version = "0.3.3", features = ["client_lib"], optional = true }
 
 # blocking API
-tokio = { version = "1.36.0", features = ["full"], optional = true }
+tokio = { version = "1.38.1", features = ["full"], optional = true }
 
 # errors
 miette = "7.2.0"
