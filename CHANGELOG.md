@@ -1,3 +1,8 @@
+# Version 0.6.9 (2024-07-18)
+
+This release fixes a bug in which axoupdater could pick the wrong installer when handling releases containing more than one app.
+
+
 # Version 0.6.8 (2024-07-05)
 
 This release updates cargo-dist.
