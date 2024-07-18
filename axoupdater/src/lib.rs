@@ -395,15 +395,16 @@ impl AxoUpdater {
         // Otherwise, proceed with downloading the installer from the release
         // we just looked up.
         } else {
+            let app_name = self.name.clone().unwrap_or_default();
             let installer_url = match env::consts::OS {
                 "macos" | "linux" => release
                     .assets
                     .iter()
-                    .find(|asset| asset.name.ends_with("-installer.sh")),
+                    .find(|asset| asset.name == format!("{app_name}-installer.sh")),
                 "windows" => release
                     .assets
                     .iter()
-                    .find(|asset| asset.name.ends_with("-installer.ps1")),
+                    .find(|asset| asset.name == format!("{app_name}-installer.ps1")),
                 _ => unreachable!(),
             };
 
