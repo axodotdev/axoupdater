@@ -34,6 +34,10 @@ fn real_main(cli: &CliApp<CliArgs>) -> Result<(), miette::Report> {
         updater.set_github_token(&token);
     }
 
+    if let Ok(path) = std::env::var("AXOUPDATER_INSTALLER_PATH") {
+        updater.configure_installer_path(path);
+    }
+
     let specifier = if let Some(tag) = &cli.config.tag {
         axoupdater::UpdateRequest::SpecificTag(tag.clone())
     } else if let Some(version) = &cli.config.version {
