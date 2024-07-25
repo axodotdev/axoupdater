@@ -146,4 +146,17 @@ pub enum AxoupdateError {
         /// The name of the missing field
         missing_field: String,
     },
+
+    /// Indicates the installation failed for some reason we're not sure of
+    #[error("The installation failed. Output from the installer: {}\n{}", stdout.clone().unwrap_or_default(), stderr.clone().unwrap_or_default())]
+    InstallFailed {
+        /// The status code from the underlying process, if any
+        status: Option<i32>,
+        /// The stdout, decoded to UTF-8. This will be None if it was piped
+        /// to the terminal when running the installer.
+        stdout: Option<String>,
+        /// The stderr, decoded to UTF-8. This will be None if it was piped
+        /// to the terminal when running the installer.
+        stderr: Option<String>,
+    },
 }
