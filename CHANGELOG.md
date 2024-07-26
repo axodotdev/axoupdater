@@ -1,3 +1,18 @@
+# Version 0.7.0 (2024-07-25)
+
+This release improves debugging for users who use axoupdater as a crate and who
+disable printing stdout/stderr from the installer. If the installer runs but
+fails, we now return a new error type which contains the stderr/stdout and exit
+status from the underlying installer; this can be used by callers to help
+identify what failed.
+
+This release also introduces a debugging feature for the standalone installer.
+It's now possible to override which installer to use by setting the
+`AXOUPDATER_INSTALLER_PATH` environment variable to the path on disk of the
+installer to use. A similar feature was already available to library users
+using the `AxoUpdater::configure_installer_path` method.
+
+
 # Version 0.6.9 (2024-07-18)
 
 This release fixes a bug in which axoupdater could pick the wrong installer when handling releases containing more than one app.
