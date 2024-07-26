@@ -161,7 +161,7 @@ dependencies = [
 
 [[package]]
 name = "axoupdater"
-version = "0.6.9"
+version = "0.7.0"
 dependencies = [
  "axoasset",
  "axoprocess",
@@ -178,7 +178,7 @@ dependencies = [
 
 [[package]]
 name = "axoupdater-cli"
-version = "0.6.9"
+version = "0.7.0"
 dependencies = [
  "axoasset",
  "axocli",
