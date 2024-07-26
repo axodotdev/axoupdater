@@ -485,12 +485,13 @@ impl AxoUpdater {
         if cfg!(windows) {
             command.arg(&installer_path);
         }
-        if !self.print_installer_stdout {
-            command.stdout(Stdio::null());
+        if self.print_installer_stdout {
+            command.stdout(Stdio::inherit());
         }
-        if !self.print_installer_stderr {
-            command.stderr(Stdio::null());
+        if self.print_installer_stderr {
+            command.stderr(Stdio::inherit());
         }
+        command.check(false);
         // On Windows, fixes a bug that occurs if the parent process is
         // PowerShell Core.
         // https://github.com/PowerShell/PowerShell/issues/18530
@@ -499,15 +500,52 @@ impl AxoUpdater {
         // Forces the generated installer to install to exactly this path,
         // regardless of how it's configured to install.
         command.env("CARGO_DIST_FORCE_INSTALL_DIR", &install_prefix);
-        let result = command.run();
+        let result = command.output();
 
-        if result.is_err() {
+        let failed;
+        let stdout;
+        let stderr;
+        let statuscode;
+        if let Ok(output) = &result {
+            failed = !output.status.success();
+            stdout = if output.stdout.is_empty() {
+                None
+            } else {
+                Some(String::from_utf8_lossy(&output.stdout).to_string())
+            };
+            stderr = if output.stderr.is_empty() {
+                None
+            } else {
+                Some(String::from_utf8_lossy(&output.stderr).to_string())
+            };
+            statuscode = output.status.code();
+        } else {
+            failed = true;
+            stdout = None;
+            stderr = None;
+            statuscode = None;
+        }
+
+        if failed {
             if let Some((ourselves, old_path)) = to_restore {
                 std::fs::rename(ourselves, old_path)?;
             }
         }
 
+        // Return the original AxoprocessError if we failed to launch
+        // the command at all
         result?;
+
+        // Otherwise return a more specific error with status code and
+        // stdout/err. Note that this stdout/stderr will be None if the
+        // caller requested us to print stdout/stderr to the terminal.
+        if failed {
+            return Err(AxoupdateError::InstallFailed {
+                status: statuscode,
+                stdout,
+                stderr,
+            });
+        }
 
         let result = UpdateResult {
             old_version: self.current_version.clone(),
