@@ -99,7 +99,7 @@ pub fn perform_runtest(runtest_args: &RuntestArgs) -> PathBuf {
     } = runtest_args;
 
     let basename = bin.file_name().unwrap();
-    let home = homedir::get_my_home().unwrap().unwrap();
+    let home = homedir::my_home().unwrap().unwrap();
 
     let app_home = &home.join(".cargo").join("bin");
     let app_path = &app_home.join(basename);
