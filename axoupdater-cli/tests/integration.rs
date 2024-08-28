@@ -104,6 +104,10 @@ fn test_upgrade() -> std::io::Result<()> {
 
     let mut updater = Cmd::new(&updater_path, "run updater");
     updater.env("AXOUPDATER_CONFIG_PATH", bindir);
+    // If we're not running in CI, try to avoid ruining the user's PATH.
+    if std::env::var("CI").is_err() {
+        updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+    }
     // We'll do that manually
     updater.check(false);
     let res = updater.output().unwrap();
@@ -156,6 +160,10 @@ fn test_upgrade_allow_prerelease() -> std::io::Result<()> {
     std::fs::copy(BIN, &updater_path)?;
 
     let mut updater = Cmd::new(&updater_path, "run updater");
+    // If we're not running in CI, try to avoid ruining the user's PATH.
+    if std::env::var("CI").is_err() {
+        updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+    }
     updater.env("AXOUPDATER_CONFIG_PATH", bindir);
     updater.arg("--prerelease");
     // We'll do that manually
@@ -215,6 +223,10 @@ fn test_upgrade_to_specific_version() -> std::io::Result<()> {
     let mut updater = Cmd::new(&updater_path, "run updater");
     updater.arg("--version").arg(target_version);
     updater.env("AXOUPDATER_CONFIG_PATH", bindir);
+    // If we're not running in CI, try to avoid ruining the user's PATH.
+    if std::env::var("CI").is_err() {
+        updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+    }
     // We'll do that manually
     updater.check(false);
     let _res = updater.output().unwrap();
@@ -264,6 +276,10 @@ fn test_downgrade_to_specific_version() -> std::io::Result<()> {
     let mut updater = Cmd::new(&updater_path, "run updater");
     updater.arg("--version").arg(target_version);
     updater.env("AXOUPDATER_CONFIG_PATH", bindir);
+    // If we're not running in CI, try to avoid ruining the user's PATH.
+    if std::env::var("CI").is_err() {
+        updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+    }
     // We'll do that manually
     updater.check(false);
     let _res = updater.output().unwrap();
@@ -326,6 +342,10 @@ fn test_downgrade_to_specific_old_version() -> std::io::Result<()> {
     let mut updater = Cmd::new(&updater_path, "run updater");
     updater.arg("--version").arg(target_version);
     updater.env("AXOUPDATER_CONFIG_PATH", bindir);
+    // If we're not running in CI, try to avoid ruining the user's PATH.
+    if std::env::var("CI").is_err() {
+        updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+    }
     // This installer is so old it doesn't respect the install path, so we
     // have to set CARGO_HOME to force it.
     updater.env("CARGO_HOME", tempdir.path());
@@ -381,6 +401,10 @@ fn test_upgrade_from_prefix_with_no_bin() -> std::io::Result<()> {
 
     let mut updater = Cmd::new(&updater_path, "run updater");
     updater.env("AXOUPDATER_CONFIG_PATH", prefix);
+    // If we're not running in CI, try to avoid ruining the user's PATH.
+    if std::env::var("CI").is_err() {
+        updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+    }
     // We'll do that manually
     updater.check(false);
     let res = updater.output().unwrap();
