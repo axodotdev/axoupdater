@@ -1,3 +1,9 @@
+# Version 0.7.1 (2024-08-28)
+
+This release improves compatibility with certain Windows configurations by setting the execution policy before running the new installer. A similar change is shipped in cargo-dist 0.21.2.
+
+This release also contains a forward-looking change to ensure compatibility with installers produced by future versions of cargo-dist ([#169](https://github.com/axodotdev/axoupdater/pull/169)).
+
 # Version 0.7.0 (2024-07-25)
 
 This release improves debugging for users who use axoupdater as a crate and who
