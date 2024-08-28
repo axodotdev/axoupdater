@@ -500,6 +500,13 @@ impl AxoUpdater {
         // Forces the generated installer to install to exactly this path,
         // regardless of how it's configured to install.
         command.env("CARGO_DIST_FORCE_INSTALL_DIR", &install_prefix);
+
+        // Also set the app-specific name for this; in the future, the
+        // CARGO_DIST_ version may be removed.
+        let app_name = self.name.clone().unwrap_or_default();
+        let app_specific_env_var = app_name.to_ascii_uppercase().replace('-', "_") + "_INSTALL_DIR";
+        command.env(app_specific_env_var, &install_prefix);
+
         let result = command.output();
 
         let failed;
