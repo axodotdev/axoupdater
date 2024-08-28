@@ -122,16 +122,27 @@ pub(crate) fn get_config_path(app_name: &str) -> AxoupdateResult<Utf8PathBuf> {
     } else if let Ok(path) = env::var("AXOUPDATER_CONFIG_PATH") {
         Ok(Utf8PathBuf::from(path))
     } else {
+        let xdg_home = env::var("XDG_CONFIG_HOME")
+            .ok()
+            .map(PathBuf::from)
+            .map(|h| h.join(app_name));
+        let xdg_home_exists = xdg_home.as_ref().map(|h| h.exists()).unwrap_or(false);
+
         let home = if cfg!(windows) {
-            env::var("LOCALAPPDATA").map(PathBuf::from).ok()
+            env::var("LOCALAPPDATA")
+                .map(PathBuf::from)
+                .map(|h| h.join(app_name))
+                .ok()
+        } else if xdg_home_exists {
+            xdg_home
         } else {
-            homedir::my_home()?.map(|path| path.join(".config"))
+            homedir::my_home()?.map(|path| path.join(".config").join(app_name))
         };
         let Some(home) = home else {
             return Err(AxoupdateError::NoHome {});
         };
 
-        Ok(Utf8PathBuf::try_from(home)?.join(app_name))
+        Ok(Utf8PathBuf::try_from(home)?)
     }
 }
 
