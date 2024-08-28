@@ -483,6 +483,10 @@ impl AxoUpdater {
         };
         let mut command = Cmd::new(path, "execute installer");
         if cfg!(windows) {
+            // don't fall over on default security-policy windows machines
+            // which require opt-in to execing powershell scripts.
+            // This doesn't bypass proper organization-set policies.
+            command.arg("-ExecutionPolicy").arg("ByPass");
             command.arg(&installer_path);
         }
         if self.print_installer_stdout {
