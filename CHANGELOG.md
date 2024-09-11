@@ -1,3 +1,9 @@
+# Version 0.7.2 (2024-09-11)
+
+This release fixes a bug that caused axoupdater to return a confusing error
+message if it attempted to load an install receipt containing a reference to an
+install path which no longer exists.
+
 # Version 0.7.1 (2024-08-28)
 
 This release improves compatibility with certain Windows configurations by setting the execution policy before running the new installer. A similar change is shipped in cargo-dist 0.21.2.
