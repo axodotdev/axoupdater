@@ -365,7 +365,16 @@ impl AxoUpdater {
     /// Returns a normalized version of install_prefix_root, for comparison
     fn install_prefix_root_normalized(&self) -> AxoupdateResult<Utf8PathBuf> {
         let raw_root = self.install_prefix_root()?;
-        let normalized = Utf8PathBuf::from_path_buf(raw_root.canonicalize()?)
+        // The canonicalize path could fail if the path doesn't exist anymore;
+        // catch that specific error here and return the original path.
+        // (We want to leave the UTF8 conversion to the next step so we handle
+        // those errors separately.)
+        let canonicalized = if let Ok(path) = raw_root.canonicalize() {
+            path
+        } else {
+            raw_root.into_std_path_buf()
+        };
+        let normalized = Utf8PathBuf::from_path_buf(canonicalized)
             .map_err(|path| AxoupdateError::CaminoConversionFailed { path })?;
         Ok(normalized)
     }
