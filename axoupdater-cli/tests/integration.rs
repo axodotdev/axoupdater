@@ -107,6 +107,7 @@ fn test_upgrade() -> std::io::Result<()> {
     // If we're not running in CI, try to avoid ruining the user's PATH.
     if std::env::var("CI").is_err() {
         updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+        updater.env("AXOLOTLSAY_NO_MODIFY_PATH", "1");
     }
     // We'll do that manually
     updater.check(false);
@@ -163,6 +164,7 @@ fn test_upgrade_allow_prerelease() -> std::io::Result<()> {
     // If we're not running in CI, try to avoid ruining the user's PATH.
     if std::env::var("CI").is_err() {
         updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+        updater.env("AXOLOTLSAY_NO_MODIFY_PATH", "1");
     }
     updater.env("AXOUPDATER_CONFIG_PATH", bindir);
     updater.arg("--prerelease");
@@ -226,6 +228,7 @@ fn test_upgrade_to_specific_version() -> std::io::Result<()> {
     // If we're not running in CI, try to avoid ruining the user's PATH.
     if std::env::var("CI").is_err() {
         updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+        updater.env("AXOLOTLSAY_NO_MODIFY_PATH", "1");
     }
     // We'll do that manually
     updater.check(false);
@@ -279,6 +282,7 @@ fn test_downgrade_to_specific_version() -> std::io::Result<()> {
     // If we're not running in CI, try to avoid ruining the user's PATH.
     if std::env::var("CI").is_err() {
         updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+        updater.env("AXOLOTLSAY_NO_MODIFY_PATH", "1");
     }
     // We'll do that manually
     updater.check(false);
@@ -345,6 +349,7 @@ fn test_downgrade_to_specific_old_version() -> std::io::Result<()> {
     // If we're not running in CI, try to avoid ruining the user's PATH.
     if std::env::var("CI").is_err() {
         updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+        updater.env("AXOLOTLSAY_NO_MODIFY_PATH", "1");
     }
     // This installer is so old it doesn't respect the install path, so we
     // have to set CARGO_HOME to force it.
@@ -404,6 +409,7 @@ fn test_upgrade_from_prefix_with_no_bin() -> std::io::Result<()> {
     // If we're not running in CI, try to avoid ruining the user's PATH.
     if std::env::var("CI").is_err() {
         updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+        updater.env("AXOLOTLSAY_NO_MODIFY_PATH", "1");
     }
     // We'll do that manually
     updater.check(false);
