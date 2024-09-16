@@ -13,11 +13,15 @@ pub use release::*;
 
 use std::{
     env::{self, args},
+    ffi::OsStr,
     process::Stdio,
 };
 
 #[cfg(unix)]
 use std::{fs::File, os::unix::fs::PermissionsExt};
+
+#[cfg(windows)]
+use self_replace;
 
 use axoasset::LocalAsset;
 use axoprocess::Cmd;
@@ -453,34 +457,19 @@ impl AxoUpdater {
             installer_path
         };
 
-        // Before we update, move ourselves to a temporary directory.
+        // Before we update, rename ourselves to a temporary name.
         // This is necessary because Windows won't let an actively-running
         // executable be overwritten.
         // If the update fails, we'll move it back to where it was before
         // we began the update process.
-        // NOTE: this TempDir needs to be held alive for the whole function.
-        let temp_root;
         let to_restore = if cfg!(target_family = "windows") {
-            // If we know the install prefix, place the temporary directory for
-            // the executable there. This is because the `rename` syscall can't
-            // rename an executable across filesystem bounds, and there's a
-            // chance the system temporary directory could be on a different
-            // drive than the executable is.
-            // (A copy-and-delete move won't work because Windows won't let us
-            // delete a running executable - the same reason we're moving it out
-            // of the way to begin with!)
-            // See https://github.com/axodotdev/axoupdater/issues/120.
-            temp_root = if let Ok(prefix) = self.install_prefix_root() {
-                TempDir::new_in(prefix)?
-            } else {
-                TempDir::new()?
-            };
-            let old_path = std::env::current_exe()?;
-            let old_filename = old_path.file_name().expect("current binary has no name!?");
-            let ourselves = temp_root.path().join(old_filename);
-            std::fs::rename(&old_path, &ourselves)?;
+            let old_filename = std::env::current_exe()?;
 
-            Some((ourselves, old_path))
+            let mut new_filename = old_filename.as_os_str().to_os_string();
+            // Filename follows the pattern set here: https://docs.rs/self-replace/1.5.0/self_replace/#implementation
+            new_filename.push(OsStr::new(".__selfdelete__.exe"));
+
+            Some((new_filename, old_filename))
         } else {
             None
         };
@@ -550,6 +539,9 @@ impl AxoUpdater {
             if let Some((ourselves, old_path)) = to_restore {
                 std::fs::rename(ourselves, old_path)?;
             }
+        } else {
+            #[cfg(windows)]
+            self_replace::self_delete().map_err(|_| AxoupdateError::CleanupFailed {})?;
         }
 
         // Return the original AxoprocessError if we failed to launch
