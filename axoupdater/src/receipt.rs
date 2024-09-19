@@ -9,6 +9,10 @@ use axotag::Version;
 use camino::Utf8PathBuf;
 use serde::Deserialize;
 
+fn default_as_true() -> bool {
+    true
+}
+
 /// Information parsed from a cargo-dist install receipt
 #[derive(Clone, Debug, Deserialize)]
 pub struct InstallReceipt {
@@ -26,6 +30,10 @@ pub struct InstallReceipt {
     pub version: String,
     /// Information about the tool used to produce this receipt
     pub provider: ReceiptProvider,
+    /// Information about whether new installations should modify system paths
+    // Added in cargo-dist 0.23.0, missing in older receipts
+    #[serde(default = "default_as_true")]
+    pub modify_path: bool,
 }
 
 /// Tool used to produce this install receipt
@@ -60,6 +68,7 @@ impl AxoUpdater {
 
         self.current_version_installed_by = Some(provider);
         self.install_prefix = Some(receipt.install_prefix);
+        self.modify_path = receipt.modify_path;
 
         Ok(self)
     }

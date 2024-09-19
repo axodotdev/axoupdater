@@ -97,6 +97,8 @@ pub struct AxoUpdater {
     /// When set to true, skips performing version checks and always assumes
     /// the software is out of date.
     always_update: bool,
+    /// Whether to modify the system path when installing
+    modify_path: bool,
 }
 
 impl Default for AxoUpdater {
@@ -123,6 +125,7 @@ impl AxoUpdater {
             installer_path: None,
             tokens: AuthorizationTokens::default(),
             always_update: false,
+            modify_path: true,
         }
     }
 
@@ -141,6 +144,7 @@ impl AxoUpdater {
             installer_path: None,
             tokens: AuthorizationTokens::default(),
             always_update: false,
+            modify_path: true,
         }
     }
 
@@ -170,6 +174,7 @@ impl AxoUpdater {
             installer_path: None,
             tokens: AuthorizationTokens::default(),
             always_update: false,
+            modify_path: true,
         })
     }
 
@@ -517,8 +522,15 @@ impl AxoUpdater {
         // Also set the app-specific name for this; in the future, the
         // CARGO_DIST_ version may be removed.
         let app_name = self.name.clone().unwrap_or_default();
-        let app_specific_env_var = app_name.to_ascii_uppercase().replace('-', "_") + "_INSTALL_DIR";
+        let app_name_env_var = app_name.to_ascii_uppercase().replace('-', "_");
+        let app_specific_env_var = format!("{app_name_env_var}_INSTALL_DIR");
         command.env(app_specific_env_var, &install_prefix);
+
+        // If the previous installation didn't modify the path, we shouldn't either
+        if !self.modify_path {
+            let app_specific_modify_path = format!("{app_name_env_var}_NO_MODIFY_PATH");
+            command.env(app_specific_modify_path, "1");
+        }
 
         let result = command.output();
 
