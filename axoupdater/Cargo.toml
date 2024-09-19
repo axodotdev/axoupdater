@@ -35,3 +35,6 @@ tokio = { version = "1.36.0", features = ["full"], optional = true }
 # errors
 miette = "7.2.0"
 thiserror = "1.0.58"
+
+[target.'cfg(windows)'.dependencies]
+self-replace = "1.5.0"

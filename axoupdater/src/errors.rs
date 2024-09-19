@@ -159,4 +159,11 @@ pub enum AxoupdateError {
         /// to the terminal when running the installer.
         stderr: Option<String>,
     },
+
+    /// self_replace/self_delete failed
+    #[error(
+        "Cleaning up the previous version failed; a copy of the old version has been left behind."
+    )]
+    #[diagnostic(help("This probably isn't your fault; please open an issue at https://github.com/axodotdev/axoupdater!"))]
+    CleanupFailed {},
 }

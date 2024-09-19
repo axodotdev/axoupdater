@@ -155,6 +155,7 @@ dependencies = [
  "gazenot",
  "homedir",
  "miette",
+ "self-replace",
  "serde",
  "tempfile",
  "thiserror",
@@ -1425,6 +1426,17 @@ checksum = "317936bbbd05227752583946b9e66d7ce3b489f84e11a94a510b4437fef407d7"
 dependencies = [
  "core-foundation-sys",
  "libc",
+]
+
+[[package]]
+name = "self-replace"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03ec815b5eab420ab893f63393878d89c90fdd94c0bcc44c07abb8ad95552fb7"
+dependencies = [
+ "fastrand 2.1.0",
+ "tempfile",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
