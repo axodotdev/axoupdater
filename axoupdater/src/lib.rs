@@ -548,13 +548,14 @@ impl AxoUpdater {
             statuscode = None;
         }
 
-        if failed {
-            if let Some((ourselves, old_path)) = to_restore {
+        if let Some((ourselves, old_path)) = to_restore {
+            if failed {
                 std::fs::rename(ourselves, old_path)?;
+            } else {
+                #[cfg(windows)]
+                self_replace::self_delete_at(&ourselves)
+                    .map_err(|_| AxoupdateError::CleanupFailed {})?;
             }
-        } else {
-            #[cfg(windows)]
-            self_replace::self_delete().map_err(|_| AxoupdateError::CleanupFailed {})?;
         }
 
         // Return the original AxoprocessError if we failed to launch
