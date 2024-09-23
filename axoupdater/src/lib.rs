@@ -472,7 +472,7 @@ impl AxoUpdater {
 
             let mut new_filename = old_filename.as_os_str().to_os_string();
             // Filename follows the pattern set here: https://docs.rs/self-replace/1.5.0/self_replace/#implementation
-            new_filename.push(OsStr::new(".__selfdelete__.exe"));
+            new_filename.push(OsStr::new(".previous.exe"));
             std::fs::rename(&old_filename, &new_filename)?;
 
             Some((new_filename, old_filename))
