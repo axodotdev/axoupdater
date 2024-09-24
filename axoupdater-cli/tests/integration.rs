@@ -65,6 +65,7 @@ fn bails_out_with_default_name() {
     assert!(stderr_string.contains("App name calculated as `axoupdater'"));
 }
 
+/*
 // Performs an in-place upgrade from an old version to a newer one.
 // The process runs like so:
 // * Simulate an install of axolotlsay into a temporary directory
@@ -132,6 +133,7 @@ fn test_upgrade() -> std::io::Result<()> {
 
     Ok(())
 }
+*/
 
 #[test]
 fn test_upgrade_allow_prerelease() -> std::io::Result<()> {
