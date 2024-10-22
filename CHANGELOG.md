@@ -1,3 +1,8 @@
+# Version 0.7.3 (2024-10-22)
+
+This release contains improvements on Windows, ensuring that temporary files and
+files from older versions are correctly cleaned up.
+
 # Version 0.7.2 (2024-09-11)
 
 This release fixes a bug that caused axoupdater to return a confusing error
