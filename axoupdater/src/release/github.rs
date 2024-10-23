@@ -7,7 +7,7 @@ use axoasset::reqwest::{
     header::{ACCEPT, USER_AGENT},
 };
 use axotag::{parse_tag, Version};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::env;
 
 fn github_api() -> String {
@@ -15,7 +15,7 @@ fn github_api() -> String {
 }
 
 /// A struct representing a specific GitHub Release
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GithubRelease {
     /// The tag this release represents
     pub tag_name: String,
@@ -30,7 +30,7 @@ pub struct GithubRelease {
 }
 
 /// Represents a specific asset inside a GitHub Release.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GithubAsset {
     /// The URL at which this asset can be found
     pub url: String,
@@ -279,7 +279,13 @@ impl Release {
 
 #[cfg(test)]
 mod test {
-    use super::{get_next_url, github_api};
+    use super::{
+        get_github_releases, get_latest_github_release, get_next_url, get_specific_github_tag,
+        github_api, GithubAsset, GithubRelease,
+    };
+    use axoasset::reqwest::StatusCode;
+    use axoasset::serde_json::json;
+    use httpmock::prelude::*;
     use std::env;
 
     #[test]
@@ -328,5 +334,84 @@ mod test {
         let result = github_api();
 
         assert_eq!(result, "https://magic.com");
+    }
+
+    #[tokio::test]
+    async fn test_get_latest_github_release_custom_endpoint() {
+        let server = MockServer::start_async().await;
+        env::set_var("INSTALLER_DOWNLOAD_URL", server.base_url());
+
+        let latest_release_http_call = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/repos/owner/name/releases/latest");
+                then.status(StatusCode::OK.as_u16())
+                    .header("content-type", "application/json")
+                    .json_body(json!(build_test_git_hub_release()));
+            })
+            .await;
+
+        let result = get_latest_github_release("name", "owner", "app", &None).await;
+
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_some());
+
+        latest_release_http_call.assert();
+    }
+
+    fn build_test_git_hub_release() -> GithubRelease {
+        GithubRelease {
+            tag_name: String::from("1.0.0"),
+            name: String::from("n"),
+            url: String::from("u"),
+            assets: vec![GithubAsset {
+                url: String::from("un"),
+                browser_download_url: String::from("bdu"),
+                name: String::from("app-installer"),
+            }],
+            prerelease: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_specific_github_tag_custom_endpoint() {
+        let server = MockServer::start_async().await;
+        env::set_var("INSTALLER_DOWNLOAD_URL", server.base_url());
+
+        let release_tag_http_call = server
+            .mock_async(|when, then| {
+                when.method("GET")
+                    .path("/repos/owner/name/releases/tags/1.0.0");
+                then.status(StatusCode::OK.as_u16())
+                    .header("content-type", "application/json")
+                    .json_body(json!(build_test_git_hub_release()));
+            })
+            .await;
+
+        let result = get_specific_github_tag("name", "owner", "app", "1.0.0", &None).await;
+
+        assert!(result.is_ok());
+
+        release_tag_http_call.assert();
+    }
+
+    #[tokio::test]
+    async fn test_get_github_releases_custom_endpoint() {
+        let server = MockServer::start_async().await;
+        env::set_var("INSTALLER_DOWNLOAD_URL", server.base_url());
+
+        let releases_http_call = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/repos/owner/name/releases");
+                then.status(StatusCode::OK.as_u16())
+                    .header("content-type", "application/json")
+                    .json_body(json!(vec![build_test_git_hub_release()]));
+            })
+            .await;
+
+        let result = get_github_releases("name", "owner", "app", &None).await;
+
+        assert!(result.is_ok());
+
+        releases_http_call.assert();
     }
 }
