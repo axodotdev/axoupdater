@@ -286,6 +286,7 @@ mod test {
     use axoasset::reqwest::StatusCode;
     use axoasset::serde_json::json;
     use httpmock::prelude::*;
+    use serial_test::serial;
     use std::env;
 
     #[test]
@@ -321,6 +322,7 @@ mod test {
     }
 
     #[test]
+    #[serial] // modifying the global state environment variables
     fn test_github_api_no_env_var() {
         env::remove_var("INSTALLER_DOWNLOAD_URL");
         let result = github_api();
@@ -329,6 +331,7 @@ mod test {
     }
 
     #[test]
+    #[serial] // modifying the global state environment variables
     fn test_github_api_overwrite() {
         env::set_var("INSTALLER_DOWNLOAD_URL", "https://magic.com");
         let result = github_api();
@@ -337,6 +340,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[serial] // modifying the global state environment variables
     async fn test_get_latest_github_release_custom_endpoint() {
         let server = MockServer::start_async().await;
         env::set_var("INSTALLER_DOWNLOAD_URL", server.base_url());
@@ -373,6 +377,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[serial] // modifying the global state environment variables
     async fn test_get_specific_github_tag_custom_endpoint() {
         let server = MockServer::start_async().await;
         env::set_var("INSTALLER_DOWNLOAD_URL", server.base_url());
@@ -395,6 +400,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[serial] // modifying the global state environment variables
     async fn test_get_github_releases_custom_endpoint() {
         let server = MockServer::start_async().await;
         env::set_var("INSTALLER_DOWNLOAD_URL", server.base_url());
