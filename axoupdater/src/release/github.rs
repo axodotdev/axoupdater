@@ -8,8 +8,11 @@ use axoasset::reqwest::{
 };
 use axotag::{parse_tag, Version};
 use serde::Deserialize;
+use std::env;
 
-const GITHUB_API: &str = "https://api.github.com";
+fn github_api() -> String {
+    env::var("INSTALLER_DOWNLOAD_URL").unwrap_or_else(|_| "https://api.github.com".to_string())
+}
 
 /// A struct representing a specific GitHub Release
 #[derive(Clone, Debug, Deserialize)]
@@ -44,8 +47,9 @@ pub(crate) async fn get_latest_github_release(
     token: &Option<String>,
 ) -> AxoupdateResult<Option<Release>> {
     let client = reqwest::Client::new();
+    let api: String = github_api();
     let mut request = client
-        .get(format!("{GITHUB_API}/repos/{owner}/{name}/releases/latest"))
+        .get(format!("{api}/repos/{owner}/{name}/releases/latest"))
         .header(ACCEPT, "application/json")
         .header(
             USER_AGENT,
@@ -89,10 +93,9 @@ pub(crate) async fn get_specific_github_tag(
     token: &Option<String>,
 ) -> AxoupdateResult<Release> {
     let client = reqwest::Client::new();
+    let api: String = github_api();
     let mut request = client
-        .get(format!(
-            "{GITHUB_API}/repos/{owner}/{name}/releases/tags/{tag}"
-        ))
+        .get(format!("{api}/repos/{owner}/{name}/releases/tags/{tag}"))
         .header(ACCEPT, "application/json")
         .header(
             USER_AGENT,
@@ -144,7 +147,8 @@ pub(crate) async fn get_github_releases(
     token: &Option<String>,
 ) -> AxoupdateResult<Vec<Release>> {
     let client = reqwest::Client::new();
-    let mut url = format!("{GITHUB_API}/repos/{owner}/{name}/releases");
+    let api: String = github_api();
+    let mut url = format!("{api}/repos/{owner}/{name}/releases");
     let mut pages_remain = true;
     let mut data: Vec<Release> = vec![];
 
@@ -275,7 +279,8 @@ impl Release {
 
 #[cfg(test)]
 mod test {
-    use super::get_next_url;
+    use super::{get_next_url, github_api};
+    use std::env;
 
     #[test]
     fn test_link_header_parse() {
@@ -307,5 +312,21 @@ mod test {
 
         let result = get_next_url(sample);
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_github_api_no_env_var() {
+        env::remove_var("INSTALLER_DOWNLOAD_URL");
+        let result = github_api();
+
+        assert_eq!(result, "https://api.github.com");
+    }
+
+    #[test]
+    fn test_github_api_overwrite() {
+        env::set_var("INSTALLER_DOWNLOAD_URL", "https://magic.com");
+        let result = github_api();
+
+        assert_eq!(result, "https://magic.com");
     }
 }
