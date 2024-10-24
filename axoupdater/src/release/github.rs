@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::env;
 
 fn github_api() -> String {
-    env::var("INSTALLER_DOWNLOAD_URL").unwrap_or_else(|_| "https://api.github.com".to_string())
+    env::var("INSTALLER_BASE_URL").unwrap_or_else(|_| "https://api.github.com".to_string())
 }
 
 /// A struct representing a specific GitHub Release
@@ -324,7 +324,7 @@ mod test {
     #[test]
     #[serial] // modifying the global state environment variables
     fn test_github_api_no_env_var() {
-        env::remove_var("INSTALLER_DOWNLOAD_URL");
+        env::remove_var("INSTALLER_BASE_URL");
         let result = github_api();
 
         assert_eq!(result, "https://api.github.com");
@@ -333,7 +333,7 @@ mod test {
     #[test]
     #[serial] // modifying the global state environment variables
     fn test_github_api_overwrite() {
-        env::set_var("INSTALLER_DOWNLOAD_URL", "https://magic.com");
+        env::set_var("INSTALLER_BASE_URL", "https://magic.com");
         let result = github_api();
 
         assert_eq!(result, "https://magic.com");
@@ -343,7 +343,7 @@ mod test {
     #[serial] // modifying the global state environment variables
     async fn test_get_latest_github_release_custom_endpoint() {
         let server = MockServer::start_async().await;
-        env::set_var("INSTALLER_DOWNLOAD_URL", server.base_url());
+        env::set_var("INSTALLER_BASE_URL", server.base_url());
 
         let latest_release_http_call = server
             .mock_async(|when, then| {
@@ -380,7 +380,7 @@ mod test {
     #[serial] // modifying the global state environment variables
     async fn test_get_specific_github_tag_custom_endpoint() {
         let server = MockServer::start_async().await;
-        env::set_var("INSTALLER_DOWNLOAD_URL", server.base_url());
+        env::set_var("INSTALLER_BASE_URL", server.base_url());
 
         let release_tag_http_call = server
             .mock_async(|when, then| {
@@ -403,7 +403,7 @@ mod test {
     #[serial] // modifying the global state environment variables
     async fn test_get_github_releases_custom_endpoint() {
         let server = MockServer::start_async().await;
-        env::set_var("INSTALLER_DOWNLOAD_URL", server.base_url());
+        env::set_var("INSTALLER_BASE_URL", server.base_url());
 
         let releases_http_call = server
             .mock_async(|when, then| {
