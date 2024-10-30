@@ -46,6 +46,10 @@ pub enum AxoupdateError {
     #[error(transparent)]
     Version(#[from] axotag::semver::Error),
 
+    /// Failed to parse a URL
+    #[error(transparent)]
+    UrlParseError(#[from] url::ParseError),
+
     /// Failure when converting a PathBuf to a Utf8PathBuf
     #[error("An internal error occurred when decoding path `{:?}' to utf8", path)]
     #[diagnostic(help("This probably isn't your fault; please open an issue!"))]
@@ -166,4 +170,26 @@ pub enum AxoupdateError {
     )]
     #[diagnostic(help("This probably isn't your fault; please open an issue at https://github.com/axodotdev/axoupdater!"))]
     CleanupFailed {},
+
+    /// User passed conflicting GitHub API environment variables
+    #[error("Both {ghe_env_var} and {github_env_var} have been set in the environment")]
+    #[diagnostic(help("These variables are mutually exclusive; please pick one."))]
+    MultipleGitHubAPIs {
+        /// The GitHub Enterprise env var
+        ghe_env_var: String,
+        /// The GitHub env var
+        github_env_var: String,
+    },
+
+    /// Couldn't parse the text domain (could be an IP, etc.)
+    #[error("Unable to parse the domain from the passed url: {url}")]
+    #[diagnostic(help("The {env_var} variable only takes domains. If you're using an IP, we recommend the GitHub Enterprise-style variable: {ghe_env_var}"))]
+    GitHubDomainParseError {
+        /// The GitHub env var
+        env_var: String,
+        /// The GitHub Enterprise env var
+        ghe_env_var: String,
+        /// The supplied URL
+        url: String,
+    },
 }

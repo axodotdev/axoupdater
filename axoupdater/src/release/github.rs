@@ -1,7 +1,7 @@
 //! Fetching and processing from GitHub Releases
 
 use super::{Asset, Release};
-use crate::errors::*;
+use crate::{app_name_to_env_var, errors::*};
 use axoasset::reqwest::{
     self,
     header::{ACCEPT, USER_AGENT},
@@ -9,9 +9,36 @@ use axoasset::reqwest::{
 use axotag::{parse_tag, Version};
 use serde::{Deserialize, Serialize};
 use std::env;
+use url::Url;
 
-fn github_api() -> String {
-    env::var("INSTALLER_BASE_URL").unwrap_or_else(|_| "https://api.github.com".to_string())
+fn github_api(app_name: &str) -> AxoupdateResult<String> {
+    let formatted_app_name = app_name_to_env_var(app_name);
+    let ghe_env_var = format!("{}_INSTALLER_GHE_BASE_URL", formatted_app_name);
+    let github_env_var = format!("{}_INSTALLER_GITHUB_BASE_URL", formatted_app_name);
+
+    if env::var(&ghe_env_var).is_ok() && env::var(&github_env_var).is_ok() {
+        return Err(AxoupdateError::MultipleGitHubAPIs {
+            ghe_env_var,
+            github_env_var,
+        });
+    }
+
+    if let Ok(value) = env::var(&ghe_env_var) {
+        let parsed = Url::parse(&value)?;
+        Ok(parsed.join("api/v3")?.to_string())
+    } else if let Ok(value) = env::var(&github_env_var) {
+        let parsed = Url::parse(&value)?;
+        let Some(domain) = parsed.domain() else {
+            return Err(AxoupdateError::GitHubDomainParseError {
+                env_var: github_env_var,
+                ghe_env_var,
+                url: value,
+            });
+        };
+        Ok(format!("{}://api.{}", parsed.scheme(), domain))
+    } else {
+        Ok("https://api.github.com".to_string())
+    }
 }
 
 /// A struct representing a specific GitHub Release
@@ -47,7 +74,7 @@ pub(crate) async fn get_latest_github_release(
     token: &Option<String>,
 ) -> AxoupdateResult<Option<Release>> {
     let client = reqwest::Client::new();
-    let api: String = github_api();
+    let api: String = github_api(app_name)?;
     let mut request = client
         .get(format!("{api}/repos/{owner}/{name}/releases/latest"))
         .header(ACCEPT, "application/json")
@@ -93,7 +120,7 @@ pub(crate) async fn get_specific_github_tag(
     token: &Option<String>,
 ) -> AxoupdateResult<Release> {
     let client = reqwest::Client::new();
-    let api: String = github_api();
+    let api: String = github_api(app_name)?;
     let mut request = client
         .get(format!("{api}/repos/{owner}/{name}/releases/tags/{tag}"))
         .header(ACCEPT, "application/json")
@@ -147,7 +174,7 @@ pub(crate) async fn get_github_releases(
     token: &Option<String>,
 ) -> AxoupdateResult<Vec<Release>> {
     let client = reqwest::Client::new();
-    let api: String = github_api();
+    let api: String = github_api(app_name)?;
     let mut url = format!("{api}/repos/{owner}/{name}/releases");
     let mut pages_remain = true;
     let mut data: Vec<Release> = vec![];
@@ -324,8 +351,8 @@ mod test {
     #[test]
     #[serial] // modifying the global state environment variables
     fn test_github_api_no_env_var() {
-        env::remove_var("INSTALLER_BASE_URL");
-        let result = github_api();
+        env::remove_var("DIST_INSTALLER_GITHUB_BASE_URL");
+        let result = github_api("dist").unwrap();
 
         assert_eq!(result, "https://api.github.com");
     }
@@ -333,21 +360,70 @@ mod test {
     #[test]
     #[serial] // modifying the global state environment variables
     fn test_github_api_overwrite() {
-        env::set_var("INSTALLER_BASE_URL", "https://magic.com");
-        let result = github_api();
+        env::set_var("DIST_INSTALLER_GITHUB_BASE_URL", "https://magic.com");
+        let result = github_api("dist").unwrap();
+        env::remove_var("DIST_INSTALLER_GITHUB_BASE_URL");
 
-        assert_eq!(result, "https://magic.com");
+        assert_eq!(result, "https://api.magic.com");
+    }
+
+    #[test]
+    #[serial] // modifying the global state environment variables
+    fn test_github_api_overwrite_ip() {
+        env::set_var("DIST_INSTALLER_GITHUB_BASE_URL", "https://127.0.0.1");
+        let result = github_api("dist");
+        env::remove_var("DIST_INSTALLER_GITHUB_BASE_URL");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[serial] // modifying the global state environment variables
+    fn test_github_api_overwrite_bad_value() {
+        env::set_var("DIST_INSTALLER_GITHUB_BASE_URL", "this is not a url");
+        let result = github_api("dist");
+        env::remove_var("DIST_INSTALLER_GITHUB_BASE_URL");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[serial] // modifying the global state environment variables
+    fn test_ghe_api_no_env_var() {
+        env::remove_var("DIST_INSTALLER_GHE_BASE_URL");
+        let result = github_api("dist").unwrap();
+
+        assert_eq!(result, "https://api.github.com");
+    }
+
+    #[test]
+    #[serial] // modifying the global state environment variables
+    fn test_ghe_api_overwrite() {
+        env::set_var("DIST_INSTALLER_GHE_BASE_URL", "https://magic.com");
+        let result = github_api("dist").unwrap();
+        env::remove_var("DIST_INSTALLER_GHE_BASE_URL");
+
+        assert_eq!(result, "https://magic.com/api/v3");
+    }
+
+    #[test]
+    #[serial] // modifying the global state environment variables
+    fn test_ghe_ip_api_overwrite() {
+        env::set_var("DIST_INSTALLER_GHE_BASE_URL", "https://127.0.0.1");
+        let result = github_api("dist").unwrap();
+        env::remove_var("DIST_INSTALLER_GHE_BASE_URL");
+
+        assert_eq!(result, "https://127.0.0.1/api/v3");
     }
 
     #[tokio::test]
     #[serial] // modifying the global state environment variables
     async fn test_get_latest_github_release_custom_endpoint() {
         let server = MockServer::start_async().await;
-        env::set_var("INSTALLER_BASE_URL", server.base_url());
+        env::set_var("APP_INSTALLER_GHE_BASE_URL", server.base_url());
 
         let latest_release_http_call = server
             .mock_async(|when, then| {
-                when.method("GET").path("/repos/owner/name/releases/latest");
+                when.method("GET")
+                    .path("/api/v3/repos/owner/name/releases/latest");
                 then.status(StatusCode::OK.as_u16())
                     .header("content-type", "application/json")
                     .json_body(json!(build_test_git_hub_release()));
@@ -355,6 +431,7 @@ mod test {
             .await;
 
         let result = get_latest_github_release("name", "owner", "app", &None).await;
+        env::remove_var("APP_INSTALLER_GHE_BASE_URL");
 
         assert!(result.is_ok());
         assert!(result.unwrap().is_some());
@@ -380,12 +457,12 @@ mod test {
     #[serial] // modifying the global state environment variables
     async fn test_get_specific_github_tag_custom_endpoint() {
         let server = MockServer::start_async().await;
-        env::set_var("INSTALLER_BASE_URL", server.base_url());
+        env::set_var("APP_INSTALLER_GHE_BASE_URL", server.base_url());
 
         let release_tag_http_call = server
             .mock_async(|when, then| {
                 when.method("GET")
-                    .path("/repos/owner/name/releases/tags/1.0.0");
+                    .path("/api/v3/repos/owner/name/releases/tags/1.0.0");
                 then.status(StatusCode::OK.as_u16())
                     .header("content-type", "application/json")
                     .json_body(json!(build_test_git_hub_release()));
@@ -393,6 +470,7 @@ mod test {
             .await;
 
         let result = get_specific_github_tag("name", "owner", "app", "1.0.0", &None).await;
+        env::remove_var("APP_INSTALLER_GHE_BASE_URL");
 
         assert!(result.is_ok());
 
@@ -403,11 +481,11 @@ mod test {
     #[serial] // modifying the global state environment variables
     async fn test_get_github_releases_custom_endpoint() {
         let server = MockServer::start_async().await;
-        env::set_var("INSTALLER_BASE_URL", server.base_url());
+        env::set_var("APP_INSTALLER_GHE_BASE_URL", server.base_url());
 
         let releases_http_call = server
             .mock_async(|when, then| {
-                when.method("GET").path("/repos/owner/name/releases");
+                when.method("GET").path("/api/v3/repos/owner/name/releases");
                 then.status(StatusCode::OK.as_u16())
                     .header("content-type", "application/json")
                     .json_body(json!(vec![build_test_git_hub_release()]));
@@ -415,6 +493,7 @@ mod test {
             .await;
 
         let result = get_github_releases("name", "owner", "app", &None).await;
+        env::remove_var("APP_INSTALLER_GHE_BASE_URL");
 
         assert!(result.is_ok());
 
