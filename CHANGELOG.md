@@ -1,3 +1,16 @@
+# Version 0.8.0 (2024-10-31)
+
+This release adds support for overriding the GitHub API URL using new environment variables:
+
+* `{app_name}_INSTALLER_GITHUB_BASE_URL`
+* `{app_name}_INSTALLER_GHE_BASE_URL`
+
+For more information, see the [dist installer docs](https://opensource.axo.dev/cargo-dist/book/installers/usage.html#artifact-location).
+
+- impl
+  - @gaborbernat [Allow changing the GitHub API base URL via the INSTALLER_DOWNLOAD_URL env var](https://github.com/axodotdev/axoupdater/pull/199)
+  - @mistydemeo [feat: use new custom env vars](https://github.com/axodotdev/axoupdater/pull/201)
+
 # Version 0.7.3 (2024-10-22)
 
 This release contains improvements on Windows, ensuring that temporary files and
