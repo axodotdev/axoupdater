@@ -35,7 +35,8 @@ fn github_api(app_name: &str) -> AxoupdateResult<String> {
                 url: value,
             });
         };
-        Ok(format!("{}://api.{}", parsed.scheme(), domain))
+        let port = parsed.port().map(|p| format!(":{p}")).unwrap_or_default();
+        Ok(format!("{}://api.{}{}", parsed.scheme(), domain, port))
     } else {
         Ok("https://api.github.com".to_string())
     }
@@ -374,6 +375,16 @@ mod test {
         let result = github_api("dist");
         env::remove_var("DIST_INSTALLER_GITHUB_BASE_URL");
         assert!(result.is_err());
+    }
+
+    #[test]
+    #[serial] // modifying the global state environment variables
+    fn test_github_api_overwrite_port() {
+        env::set_var("DIST_INSTALLER_GITHUB_BASE_URL", "https://magic.com:8000");
+        let result = github_api("dist").unwrap();
+        env::remove_var("DIST_INSTALLER_GITHUB_BASE_URL");
+
+        assert_eq!(result, "https://api.magic.com:8000");
     }
 
     #[test]
