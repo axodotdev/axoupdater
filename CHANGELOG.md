@@ -1,3 +1,9 @@
+# Version 0.8.1 (2024-10-31)
+
+This release fixes an issue with the previous release in which
+`{app_name}_INSTALLER_GITHUB_BASE_URL` wouldn't respect the port specified by
+the user.
+
 # Version 0.8.0 (2024-10-31)
 
 This release adds support for overriding the GitHub API URL using new environment variables:
