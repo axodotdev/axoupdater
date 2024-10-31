@@ -512,7 +512,7 @@ impl AxoUpdater {
         // Also set the app-specific name for this; in the future, the
         // CARGO_DIST_ version may be removed.
         let app_name = self.name.clone().unwrap_or_default();
-        let app_name_env_var = app_name.to_ascii_uppercase().replace('-', "_");
+        let app_name_env_var = app_name_to_env_var(&app_name);
         let app_specific_env_var = format!("{app_name_env_var}_INSTALL_DIR");
         command.env(app_specific_env_var, &install_prefix);
 
@@ -619,6 +619,11 @@ fn get_app_name() -> Option<String> {
     } else {
         None
     }
+}
+
+/// Returns an environment variable-compatible version of the app name.
+pub fn app_name_to_env_var(app_name: &str) -> String {
+    app_name.to_ascii_uppercase().replace('-', "_")
 }
 
 fn root_without_bin(path: &Utf8PathBuf) -> Utf8PathBuf {
