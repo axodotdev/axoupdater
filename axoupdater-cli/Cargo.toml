@@ -27,7 +27,7 @@ axoasset = { version = "1.0.0", default-features = false, features = [
 axoprocess = "0.2.0"
 camino = { version = "1.1.9", features = ["serde1"] }
 tempfile = "3.13.0"
-tokio = { version = "1.41.0", features = ["full"] }
+tokio = { version = "1.41.1", features = ["full"] }
 
 [[bin]]
 name = "axoupdater"
