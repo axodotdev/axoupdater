@@ -30,6 +30,9 @@ use camino::Utf8PathBuf;
 
 use tempfile::TempDir;
 
+/// Version number for this release of axoupdater.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// Provides information about the result of the upgrade operation
 pub struct UpdateResult {
     /// The old version (pre-upgrade)
