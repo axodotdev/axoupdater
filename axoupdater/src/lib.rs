@@ -351,7 +351,7 @@ impl AxoUpdater {
     /// component if necessary. Works around a bug introduced in cargo-dist
     /// where this field was returned inconsistently in receipts for a few
     /// versions.
-    fn install_prefix_root(&self) -> AxoupdateResult<Utf8PathBuf> {
+    pub fn install_prefix_root(&self) -> AxoupdateResult<Utf8PathBuf> {
         let Some(install_prefix) = &self.install_prefix else {
             return Err(AxoupdateError::NotConfigured {
                 missing_field: "install_prefix".to_owned(),
