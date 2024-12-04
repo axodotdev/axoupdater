@@ -1,3 +1,11 @@
+# Version 0.8.2 (2024-12-03)
+
+This release adds `x86_64-pc-windows-gnu` to the list of targets for which we
+publish binaries. It also contains a few small changes to the library:
+
+* The new `AxoUpdater::VERSION` constant exposes axoupdater's version.
+* The `AxoUpdater::install_prefix_root` method is now public.
+
 # Version 0.8.1 (2024-10-31)
 
 This release fixes an issue with the previous release in which
