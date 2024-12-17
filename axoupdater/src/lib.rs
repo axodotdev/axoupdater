@@ -202,6 +202,19 @@ impl AxoUpdater {
         Ok(self)
     }
 
+    /// Changes this updater's name to `app_name`, regardless of what it was
+    /// initialized as and regardless of what was read from the receipt.
+    pub fn set_name(&mut self, app_name: &str) -> &mut AxoUpdater {
+        self.name = Some(app_name.to_owned());
+        if let Some(source) = &self.source {
+            let mut our_source = source.clone();
+            our_source.app_name = app_name.to_owned();
+            self.source = Some(our_source);
+        }
+
+        self
+    }
+
     /// Enables printing the underlying installer's stdout.
     pub fn enable_installer_stdout(&mut self) -> &mut AxoUpdater {
         self.print_installer_stdout = true;
