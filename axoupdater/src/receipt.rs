@@ -52,10 +52,18 @@ impl AxoUpdater {
     /// Shell and Powershell installers produced by cargo-dist since 0.9.0
     /// will have created an install receipt.
     pub fn load_receipt(&mut self) -> AxoupdateResult<&mut AxoUpdater> {
-        let Some(app_name) = &self.name else {
+        let Some(app_name) = self.name.clone() else {
             return Err(AxoupdateError::NoAppNamePassed {});
         };
 
+        self.load_receipt_as(&app_name)
+    }
+
+    /// Similar to `AxoUpdater::load_receipt`, but loads a receipt for the app
+    /// with the name `app_name` instead of the auto-detected name. This can be
+    /// useful if the receipt may exist under several different names, for
+    /// example if an app has been renamed.
+    pub fn load_receipt_as(&mut self, app_name: &str) -> AxoupdateResult<&mut AxoUpdater> {
         let receipt = load_receipt_for(app_name)?;
 
         self.source = Some(receipt.source);
