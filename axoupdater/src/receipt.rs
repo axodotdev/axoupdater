@@ -116,23 +116,56 @@ impl AxoUpdater {
     }
 }
 
-pub(crate) fn get_config_path(app_name: &str) -> AxoupdateResult<Utf8PathBuf> {
-    if env::var("AXOUPDATER_CONFIG_WORKING_DIR").is_ok() {
-        Ok(Utf8PathBuf::try_from(current_dir()?)?)
-    } else if let Ok(path) = env::var("AXOUPDATER_CONFIG_PATH") {
-        Ok(Utf8PathBuf::from(path))
-    } else {
-        let home = if cfg!(windows) {
-            env::var("LOCALAPPDATA").map(PathBuf::from).ok()
-        } else {
-            homedir::my_home()?.map(|path| path.join(".config"))
-        };
-        let Some(home) = home else {
-            return Err(AxoupdateError::NoHome {});
-        };
+/// Returns a Vec of possible receipt locations, beginning with
+/// `XDG_CONFIG_HOME` (if set).
+pub(crate) fn get_config_paths(app_name: &str) -> AxoupdateResult<Vec<Utf8PathBuf>> {
+    let mut potential_homes = vec![];
 
-        Ok(Utf8PathBuf::try_from(home)?.join(app_name))
+    if env::var("AXOUPDATER_CONFIG_WORKING_DIR").is_ok() {
+        Ok(vec![Utf8PathBuf::try_from(current_dir()?)?])
+    } else if let Ok(path) = env::var("AXOUPDATER_CONFIG_PATH") {
+        Ok(vec![Utf8PathBuf::from(path)])
+    } else {
+        let xdg_home = env::var("XDG_CONFIG_HOME")
+            .ok()
+            .map(Utf8PathBuf::from)
+            .map(|h| h.join(app_name));
+        if let Some(home) = &xdg_home {
+            if home.exists() {
+                potential_homes.push(home.to_owned());
+            }
+        }
+        let home = if cfg!(windows) {
+            env::var("LOCALAPPDATA")
+                .map(PathBuf::from)
+                .map(|h| h.join(app_name))
+                .ok()
+        } else {
+            homedir::my_home()?.map(|path| path.join(".config").join(app_name))
+        };
+        if let Some(home) = home {
+            potential_homes.push(Utf8PathBuf::try_from(home)?);
+        }
+
+        if potential_homes.is_empty() {
+            return Err(AxoupdateError::NoHome {});
+        }
+
+        Ok(potential_homes)
     }
+}
+
+/// Iterates through the list of possible receipt locations from
+/// `get_config_paths` and returns the first that contains a valid receipt.
+pub(crate) fn get_receipt_path(app_name: &str) -> AxoupdateResult<Option<Utf8PathBuf>> {
+    for receipt_prefix in get_config_paths(app_name)? {
+        let install_receipt_path = receipt_prefix.join(format!("{app_name}-receipt.json"));
+        if install_receipt_path.exists() {
+            return Ok(Some(install_receipt_path));
+        }
+    }
+
+    Ok(None)
 }
 
 fn load_receipt_from_path(install_receipt_path: &Utf8PathBuf) -> AxoupdateResult<InstallReceipt> {
@@ -140,13 +173,11 @@ fn load_receipt_from_path(install_receipt_path: &Utf8PathBuf) -> AxoupdateResult
 }
 
 fn load_receipt_for(app_name: &str) -> AxoupdateResult<InstallReceipt> {
-    let Ok(receipt_prefix) = get_config_path(app_name) else {
-        return Err(AxoupdateError::ConfigFetchFailed {
+    let Some(install_receipt_path) = get_receipt_path(app_name)? else {
+        return Err(AxoupdateError::NoReceipt {
             app_name: app_name.to_owned(),
         });
     };
-
-    let install_receipt_path = receipt_prefix.join(format!("{app_name}-receipt.json"));
 
     load_receipt_from_path(&install_receipt_path).map_err(|_| AxoupdateError::ReceiptLoadFailed {
         app_name: app_name.to_owned(),

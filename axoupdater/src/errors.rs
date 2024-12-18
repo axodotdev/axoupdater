@@ -85,6 +85,16 @@ pub enum AxoupdateError {
         app_name: String,
     },
 
+    /// Not a generic receipt load failure, but the receipt itself doesn't exist.
+    #[error("Unable to load receipt for app {app_name}")]
+    #[diagnostic(help(
+        "This may indicate that this installation of {app_name} was installed via a method that's not eligible for upgrades."
+    ))]
+    NoReceipt {
+        /// This app's name
+        app_name: String,
+    },
+
     /// Indicates that this app's name couldn't be determined when trying
     /// to autodetect it.
     #[error("Unable to determine the name of the app to update")]

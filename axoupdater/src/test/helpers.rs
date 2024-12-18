@@ -3,7 +3,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::{receipt::get_config_path, ReleaseSourceType};
+use crate::{receipt::get_receipt_path, ReleaseSourceType};
 
 static RECEIPT_TEMPLATE: &str = r#"{"binaries":[BINARIES],"install_prefix":"INSTALL_PREFIX","provider":{"source":"cargo-dist","version":"0.10.0-prerelease.1"},"source":{"app_name":"APP_NAME","name":"PACKAGE","owner":"OWNER","release_type":"RELEASE_TYPE"},"version":"VERSION"}"#;
 
@@ -104,7 +104,10 @@ pub fn perform_runtest(runtest_args: &RuntestArgs) -> PathBuf {
     let app_home = &home.join(".cargo").join("bin");
     let app_path = &app_home.join(basename);
 
-    let config_path = get_config_path(app_name).unwrap().into_std_path_buf();
+    let config_path = get_receipt_path(app_name)
+        .unwrap()
+        .unwrap()
+        .into_std_path_buf();
 
     // Ensure we delete any previous copy that may exist
     // at this path before we copy in our version.
