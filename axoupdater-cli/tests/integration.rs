@@ -45,10 +45,14 @@ fn install_receipt(version: &str, cargo_dist_version: &str, prefix: &Utf8PathBuf
 fn write_receipt(
     version: &str,
     cargo_dist_version: &str,
-    prefix: &Utf8PathBuf,
+    receipt_prefix: &Utf8PathBuf,
+    install_prefix: &Utf8PathBuf,
 ) -> std::io::Result<()> {
-    let contents = install_receipt(version, cargo_dist_version, prefix);
-    let receipt_name = prefix.join("axolotlsay-receipt.json");
+    // Create the prefix in case it doesn't exist
+    LocalAsset::create_dir_all(receipt_prefix).unwrap();
+
+    let contents = install_receipt(version, cargo_dist_version, install_prefix);
+    let receipt_name = receipt_prefix.join("axolotlsay-receipt.json");
     LocalAsset::write_new(&contents, receipt_name).unwrap();
 
     Ok(())
@@ -94,7 +98,12 @@ fn test_upgrade() -> std::io::Result<()> {
         .unwrap();
 
     // Write the receipt for the updater to use
-    write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
+    write_receipt(
+        base_version,
+        "0.11.1",
+        &bindir.to_path_buf(),
+        &bindir.to_path_buf(),
+    )?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
@@ -104,6 +113,71 @@ fn test_upgrade() -> std::io::Result<()> {
 
     let mut updater = Cmd::new(&updater_path, "run updater");
     updater.env("AXOUPDATER_CONFIG_PATH", bindir);
+    // If we're not running in CI, try to avoid ruining the user's PATH.
+    if std::env::var("CI").is_err() {
+        updater.env("INSTALLER_NO_MODIFY_PATH", "1");
+        updater.env("AXOLOTLSAY_NO_MODIFY_PATH", "1");
+    }
+    // We'll do that manually
+    updater.check(false);
+    let res = updater.output().unwrap();
+    let output_stdout = String::from_utf8(res.stdout).unwrap();
+    let output_stderr = String::from_utf8(res.stderr).unwrap();
+
+    // Now let's check the version we just updated to
+    let new_axolotlsay_path = &bindir.join(format!("axolotlsay{EXE_SUFFIX}"));
+    assert!(
+        new_axolotlsay_path.exists(),
+        "update result was\nstdout\n{}\nstderr\n{}",
+        output_stdout,
+        output_stderr
+    );
+    let mut new_axolotlsay = Cmd::new(new_axolotlsay_path, "version test");
+    new_axolotlsay.arg("--version");
+    let output = new_axolotlsay.output().unwrap();
+    let stderr_string = String::from_utf8(output.stdout).unwrap();
+    assert!(stderr_string.starts_with("axolotlsay "));
+    assert_ne!(stderr_string, format!("axolotlsay {}\n", base_version));
+
+    Ok(())
+}
+
+#[test]
+fn test_upgrade_xdg_config_home() -> std::io::Result<()> {
+    let tempdir = TempDir::new()?;
+    let bindir_path = &tempdir.path().join("bin");
+    let bindir = Utf8Path::from_path(bindir_path).unwrap();
+    std::fs::create_dir_all(bindir)?;
+    let xdg_config_home = tempdir.path().join("config");
+    let xdg_config_home = Utf8Path::from_path(&xdg_config_home).unwrap();
+
+    let base_version = "0.2.115";
+
+    let url = axolotlsay_tarball_path(base_version);
+    let compressed_path =
+        Utf8PathBuf::from_path_buf(tempdir.path().join("axolotlsay.tar.gz")).unwrap();
+
+    let client = axoasset::AxoClient::with_reqwest(axoasset::reqwest::Client::new());
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(client.load_and_write_to_file(&url, &compressed_path))
+        .unwrap();
+
+    // Write the receipt for the updater to use
+    write_receipt(
+        base_version,
+        "0.11.1",
+        &xdg_config_home.join("axolotlsay"),
+        &bindir.to_path_buf(),
+    )?;
+
+    LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
+
+    // Now install our copy of the updater instead of the one axolotlsay came with
+    let updater_path = bindir.join(format!("axolotlsay-update{EXE_SUFFIX}"));
+    std::fs::copy(BIN, &updater_path)?;
+
+    let mut updater = Cmd::new(&updater_path, "run updater");
+    updater.env("XDG_CONFIG_HOME", xdg_config_home);
     // If we're not running in CI, try to avoid ruining the user's PATH.
     if std::env::var("CI").is_err() {
         updater.env("INSTALLER_NO_MODIFY_PATH", "1");
@@ -152,7 +226,12 @@ fn test_upgrade_allow_prerelease() -> std::io::Result<()> {
         .unwrap();
 
     // Write the receipt for the updater to use
-    write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
+    write_receipt(
+        base_version,
+        "0.11.1",
+        &bindir.to_path_buf(),
+        &bindir.to_path_buf(),
+    )?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
@@ -214,7 +293,12 @@ fn test_upgrade_to_specific_version() -> std::io::Result<()> {
         .unwrap();
 
     // Write the receipt for the updater to use
-    write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
+    write_receipt(
+        base_version,
+        "0.11.1",
+        &bindir.to_path_buf(),
+        &bindir.to_path_buf(),
+    )?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
@@ -268,7 +352,12 @@ fn test_downgrade_to_specific_version() -> std::io::Result<()> {
         .unwrap();
 
     // Write the receipt for the updater to use
-    write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
+    write_receipt(
+        base_version,
+        "0.11.1",
+        &bindir.to_path_buf(),
+        &bindir.to_path_buf(),
+    )?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
@@ -335,7 +424,12 @@ fn test_downgrade_to_specific_old_version() -> std::io::Result<()> {
         .unwrap();
 
     // Write the receipt for the updater to use
-    write_receipt(base_version, "0.11.1", &bindir.to_path_buf())?;
+    write_receipt(
+        base_version,
+        "0.11.1",
+        &bindir.to_path_buf(),
+        &bindir.to_path_buf(),
+    )?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
@@ -396,7 +490,7 @@ fn test_upgrade_from_prefix_with_no_bin() -> std::io::Result<()> {
     // Write the receipt for the updater to use
     // 0.15.0 is the first cargo-dist that published fixed installers for the
     // /bin bug mentioned above
-    write_receipt(base_version, "0.15.0", &prefix)?;
+    write_receipt(base_version, "0.15.0", &prefix, &prefix)?;
 
     LocalAsset::untar_gz_all(&compressed_path, bindir).unwrap();
 
