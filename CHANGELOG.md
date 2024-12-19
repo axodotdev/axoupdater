@@ -1,3 +1,42 @@
+# Version 0.9.0 (2024-12-19)
+
+This release adds support for `XDG_CONFIG_HOME` as the location for install
+receipts. If this variable is set and the receipt is located within this path,
+it overrides the default location of `$HOME/.config` (Mac and Linux) or
+`%LOCALAPPDATA%` (Windows). Install receipts will be created in this path when
+running installers created by dist 0.27.0 or later if `XDG_CONFIG_HOME` is set.
+
+This release also adds infrastructure to support app renaming when running as
+a library. There are two new features:
+
+* It's now possible to load receipts for alternate app names, not just the one
+  that a given instance of `AxoUpdater` was instantiated for. This can be done
+  by running `AxoUpdater::load_receipt_for(app_name)`.
+* It's now possible to change the name a given `AxoUpdater` instance is for.
+  This can be done by running `AxoUpdater::set_name(app_name)`. This can
+  override the name that was loaded from an app receipt.
+
+For example, if your app is changing from `oldname` to `newname`, you might set
+up `AxoUpdater` like this:
+
+```rust
+// Instantiate the updater class with the new app name
+let mut updater = AxoUpdater::new_for("newname");
+
+// First, try to check for a "newname" receipt
+// (this might be a post-rename release)
+if updater.load_receipt_as("newname").is_err() {
+    // If that didn't work, try again as "oldname"
+    if updater
+        .load_receipt_as("oldname")
+        .map(|updater| updater.set_name("newname"))
+        .is_err()
+    {
+        eprintln!("Unable to load install receipt!");
+    }
+}
+```
+
 # Version 0.8.2 (2024-12-03)
 
 This release adds `x86_64-pc-windows-gnu` to the list of targets for which we
