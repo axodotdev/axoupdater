@@ -24,7 +24,7 @@ axotag = { version = "0.2.0" }
 camino = { version = "1.1.6", features = ["serde1"] }
 homedir = "0.3.3"
 serde = "1.0.197"
-tempfile = "3.10.1"
+tempfile = "3.17.1"
 url = "2.5.4"
 
 # axo releases
