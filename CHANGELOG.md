@@ -1,3 +1,7 @@
+# Version 0.9.1 (2025-07-20)
+
+This release updates several dependencies.
+
 # Version 0.9.0 (2024-12-19)
 
 This release adds support for `XDG_CONFIG_HOME` as the location for install
