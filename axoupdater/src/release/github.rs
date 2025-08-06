@@ -13,6 +13,13 @@ use url::Url;
 
 fn github_api(app_name: &str) -> AxoupdateResult<String> {
     let formatted_app_name = app_name_to_env_var(app_name);
+
+    let github_api_env_var = format!("{}_INSTALLER_GITHUB_API_BASE_URL", formatted_app_name);
+    if let Ok(value) = env::var(&github_api_env_var) {
+        let parsed = Url::parse(&value)?;
+        return Ok(parsed.to_string());
+    }
+
     let ghe_env_var = format!("{}_INSTALLER_GHE_BASE_URL", formatted_app_name);
     let github_env_var = format!("{}_INSTALLER_GITHUB_BASE_URL", formatted_app_name);
 
@@ -423,6 +430,47 @@ mod test {
         env::remove_var("DIST_INSTALLER_GHE_BASE_URL");
 
         assert_eq!(result, "https://127.0.0.1/api/v3");
+    }
+
+    #[test]
+    #[serial] // modifying the global state environment variables
+    fn test_github_api_base_url() {
+        env::set_var(
+            "DIST_INSTALLER_GITHUB_API_BASE_URL",
+            "https://magic.com/api.github.com",
+        );
+        let result = github_api("dist").unwrap();
+        env::remove_var("DIST_INSTALLER_GITHUB_API_BASE_URL");
+
+        assert_eq!(result, "https://magic.com/api.github.com");
+    }
+
+    #[test]
+    #[serial] // modifying the global state environment variables
+    fn test_github_api_base_url_override_others() {
+        env::set_var(
+            "DIST_INSTALLER_GITHUB_API_BASE_URL",
+            "https://magic.com/api.github.com",
+        );
+        env::set_var("DIST_INSTALLER_GITHUB_BASE_URL", "https://github.com");
+        env::set_var("DIST_INSTALLER_GHE_BASE_URL", "https://ghe.com");
+
+        let result = github_api("dist").unwrap();
+
+        env::remove_var("DIST_INSTALLER_GITHUB_API_BASE_URL");
+        env::remove_var("DIST_INSTALLER_GITHUB_BASE_URL");
+        env::remove_var("DIST_INSTALLER_GHE_BASE_URL");
+
+        assert_eq!(result, "https://magic.com/api.github.com");
+    }
+
+    #[test]
+    #[serial] // modifying the global state environment variables
+    fn test_github_api_base_url_bad_value() {
+        env::set_var("DIST_INSTALLER_GITHUB_API_BASE_URL", "this is not a url");
+        let result = github_api("dist");
+        env::remove_var("DIST_INSTALLER_GITHUB_API_BASE_URL");
+        assert!(result.is_err());
     }
 
     #[tokio::test]
