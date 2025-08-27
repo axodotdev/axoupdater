@@ -21,7 +21,7 @@ tls_native_roots = ["axoasset/tls-native-roots"]
 axoasset = { version = "1.3.0", default-features = false, features = ["json-serde"] }
 axoprocess = "0.2.0"
 axotag = { version = "0.3.0" }
-camino = { version = "1.1.6", features = ["serde1"] }
+camino = { version = "1.1.12", features = ["serde1"] }
 homedir = "0.3.3"
 serde = "1.0.197"
 tempfile = "3.10.1"
