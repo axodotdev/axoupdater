@@ -15,7 +15,7 @@ tls_native_roots = ["axoupdater/tls_native_roots"]
 [dependencies]
 axocli = "0.3.0"
 axoupdater = { version = "=0.9.1", path = "../axoupdater", features = ["blocking"] }
-clap = { version = "4.5.41", features = ["derive"] }
+clap = { version = "4.5.48", features = ["derive"] }
 
 # errors
 miette = "7.4.0"
