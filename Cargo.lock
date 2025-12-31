@@ -156,9 +156,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "axoasset"
-version = "1.4.0"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a07b94735e2775756d9a5b6422bd49ee089de3c3f39383489e20ea748b4ee690"
+checksum = "448205969ebf1eec16088881b9d309e90e52ceed1bfa92e7efbfb00f3b10982a"
 dependencies = [
  "camino",
  "flate2",
@@ -2277,7 +2277,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix 1.0.8",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3220,9 +3220,9 @@ dependencies = [
 
 [[package]]
 name = "zip"
-version = "4.6.1"
+version = "7.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "caa8cd6af31c3b31c6631b8f483848b91589021b28fffe50adada48d4f4d2ed1"
+checksum = "bdd8a47718a4ee5fe78e07667cd36f3de80e7c2bfe727c7074245ffc7303c037"
 dependencies = [
  "aes",
  "arbitrary",
@@ -3230,6 +3230,7 @@ dependencies = [
  "constant_time_eq",
  "crc32fast",
  "flate2",
+ "generic-array",
  "getrandom 0.3.3",
  "hmac",
  "indexmap",
