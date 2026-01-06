@@ -18,7 +18,7 @@ use std::{
 };
 
 #[cfg(unix)]
-use std::{fs::File, os::unix::fs::PermissionsExt};
+use std::{fs::File};
 
 #[cfg(windows)]
 use self_replace;
@@ -455,10 +455,7 @@ impl AxoUpdater {
 
             #[cfg(unix)]
             {
-                let installer_file = File::create(&installer_path)?;
-                let mut perms = installer_file.metadata()?.permissions();
-                perms.set_mode(0o744);
-                installer_file.set_permissions(perms)?;
+                let _ = File::create(&installer_path)?;
             }
 
             let client = axoasset::reqwest::Client::new();
@@ -499,7 +496,7 @@ impl AxoUpdater {
         let path = if cfg!(windows) {
             "powershell"
         } else {
-            installer_path.as_str()
+            "/bin/sh"
         };
         let mut command = Cmd::new(path, "execute installer");
         if cfg!(windows) {
@@ -507,8 +504,9 @@ impl AxoUpdater {
             // which require opt-in to execing powershell scripts.
             // This doesn't bypass proper organization-set policies.
             command.arg("-ExecutionPolicy").arg("ByPass");
-            command.arg(&installer_path);
         }
+        command.arg(&installer_path);
+
         if self.print_installer_stdout {
             command.stdout(Stdio::inherit());
         }
