@@ -72,9 +72,9 @@ pub(crate) async fn get_latest_github_release(
     name: &str,
     owner: &str,
     app_name: &str,
+    client: &reqwest::Client,
     token: &Option<String>,
 ) -> AxoupdateResult<Option<Release>> {
-    let client = reqwest::Client::new();
     let api: String = github_api(app_name)?;
     let mut request = client
         .get(format!("{api}/repos/{owner}/{name}/releases/latest"))
@@ -118,9 +118,9 @@ pub(crate) async fn get_specific_github_tag(
     owner: &str,
     app_name: &str,
     tag: &str,
+    client: &reqwest::Client,
     token: &Option<String>,
 ) -> AxoupdateResult<Release> {
-    let client = reqwest::Client::new();
     let api: String = github_api(app_name)?;
     let mut request = client
         .get(format!("{api}/repos/{owner}/{name}/releases/tags/{tag}"))
@@ -152,9 +152,10 @@ pub(crate) async fn get_specific_github_version(
     owner: &str,
     app_name: &str,
     version: &Version,
+    client: &reqwest::Client,
     token: &Option<String>,
 ) -> AxoupdateResult<Release> {
-    let releases = get_github_releases(name, owner, app_name, token).await?;
+    let releases = get_github_releases(name, owner, app_name, client, token).await?;
     let release = releases.into_iter().find(|r| &r.version == version);
 
     if let Some(release) = release {
@@ -172,9 +173,9 @@ pub(crate) async fn get_github_releases(
     name: &str,
     owner: &str,
     app_name: &str,
+    client: &reqwest::Client,
     token: &Option<String>,
 ) -> AxoupdateResult<Vec<Release>> {
-    let client = reqwest::Client::new();
     let api: String = github_api(app_name)?;
     let mut url = format!("{api}/repos/{owner}/{name}/releases");
     let mut pages_remain = true;
@@ -182,7 +183,7 @@ pub(crate) async fn get_github_releases(
 
     while pages_remain {
         // fetch the releases
-        let resp = get_releases(&client, &url, token).await?;
+        let resp = get_releases(client, &url, token).await?;
 
         // collect the response headers
         let headers = resp.headers();
@@ -311,7 +312,7 @@ mod test {
         get_github_releases, get_latest_github_release, get_next_url, get_specific_github_tag,
         github_api, GithubAsset, GithubRelease,
     };
-    use axoasset::reqwest::StatusCode;
+    use axoasset::reqwest::{self, StatusCode};
     use axoasset::serde_json::json;
     use httpmock::prelude::*;
     use serial_test::serial;
@@ -441,7 +442,8 @@ mod test {
             })
             .await;
 
-        let result = get_latest_github_release("name", "owner", "app", &None).await;
+        let client = reqwest::Client::new();
+        let result = get_latest_github_release("name", "owner", "app", &client, &None).await;
         env::remove_var("APP_INSTALLER_GHE_BASE_URL");
 
         assert!(result.is_ok());
@@ -480,7 +482,8 @@ mod test {
             })
             .await;
 
-        let result = get_specific_github_tag("name", "owner", "app", "1.0.0", &None).await;
+        let client = reqwest::Client::new();
+        let result = get_specific_github_tag("name", "owner", "app", "1.0.0", &client, &None).await;
         env::remove_var("APP_INSTALLER_GHE_BASE_URL");
 
         assert!(result.is_ok());
@@ -503,7 +506,8 @@ mod test {
             })
             .await;
 
-        let result = get_github_releases("name", "owner", "app", &None).await;
+        let client = reqwest::Client::new();
+        let result = get_github_releases("name", "owner", "app", &client, &None).await;
         env::remove_var("APP_INSTALLER_GHE_BASE_URL");
 
         assert!(result.is_ok());
