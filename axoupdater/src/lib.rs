@@ -6,6 +6,7 @@
 pub mod errors;
 mod receipt;
 mod release;
+mod staging_dir;
 pub mod test;
 
 pub use errors::*;
@@ -27,8 +28,7 @@ use axoasset::LocalAsset;
 use axoprocess::Cmd;
 pub use axotag::Version;
 use camino::Utf8PathBuf;
-
-use tempfile::TempDir;
+use staging_dir::select_installer_tempdir;
 
 /// Version number for this release of axoupdater.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -420,7 +420,13 @@ impl AxoUpdater {
                 self.requested_release.as_ref().unwrap()
             }
         };
-        let tempdir = TempDir::new()?;
+        let tempdir_parent_name = self
+            .source
+            .as_ref()
+            .map(|source| source.name.as_str())
+            .or(self.name.as_deref())
+            .unwrap_or("axoupdater");
+        let mut _staging_dir_guard = None;
 
         // If we've been given an installer path to use, skip downloading and
         // install from that.
@@ -429,6 +435,7 @@ impl AxoUpdater {
         // Otherwise, proceed with downloading the installer from the release
         // we just looked up.
         } else {
+            let tempdir = select_installer_tempdir(tempdir_parent_name)?;
             let app_name = self.name.clone().unwrap_or_default();
             let installer_url = match env::consts::OS {
                 "macos" | "linux" => release
@@ -474,6 +481,7 @@ impl AxoUpdater {
                 .await?;
 
             LocalAsset::write_new_all(&download, &installer_path)?;
+            _staging_dir_guard = Some(tempdir);
 
             installer_path
         };
