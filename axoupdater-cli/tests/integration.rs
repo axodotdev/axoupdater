@@ -58,6 +58,16 @@ fn write_receipt(
     Ok(())
 }
 
+fn executable_tempdir() -> std::io::Result<TempDir> {
+    if let Some(runtime_dir) = std::env::var_os("XDG_RUNTIME_DIR") {
+        tempfile::Builder::new()
+            .prefix("axoupdater-exec")
+            .tempdir_in(runtime_dir)
+    } else {
+        TempDir::new()
+    }
+}
+
 #[test]
 fn bails_out_with_default_name() {
     let mut command = Cmd::new(BIN, "execute axoupdater");
@@ -81,7 +91,7 @@ fn bails_out_with_default_name() {
 //       several noteworthy bugfixes in its installer.
 #[test]
 fn test_upgrade() -> std::io::Result<()> {
-    let tempdir = TempDir::new()?;
+    let tempdir = executable_tempdir()?;
     let bindir_path = &tempdir.path().join("bin");
     let bindir = Utf8Path::from_path(bindir_path).unwrap();
     std::fs::create_dir_all(bindir)?;
@@ -144,7 +154,7 @@ fn test_upgrade() -> std::io::Result<()> {
 
 #[test]
 fn test_upgrade_xdg_config_home() -> std::io::Result<()> {
-    let tempdir = TempDir::new()?;
+    let tempdir = executable_tempdir()?;
     let bindir_path = &tempdir.path().join("bin");
     let bindir = Utf8Path::from_path(bindir_path).unwrap();
     std::fs::create_dir_all(bindir)?;
@@ -209,7 +219,7 @@ fn test_upgrade_xdg_config_home() -> std::io::Result<()> {
 
 #[test]
 fn test_upgrade_allow_prerelease() -> std::io::Result<()> {
-    let tempdir = TempDir::new()?;
+    let tempdir = executable_tempdir()?;
     let bindir_path = &tempdir.path().join("bin");
     let bindir = Utf8Path::from_path(bindir_path).unwrap();
     std::fs::create_dir_all(bindir)?;
@@ -276,7 +286,8 @@ fn test_upgrade_allow_prerelease() -> std::io::Result<()> {
 #[test]
 fn test_upgrade_to_specific_version() -> std::io::Result<()> {
     let tempdir = TempDir::new()?;
-    let bindir_path = &tempdir.path().join("bin");
+    let executable_tmp = executable_tempdir()?;
+    let bindir_path = &executable_tmp.path().join("bin");
     let bindir = Utf8Path::from_path(bindir_path).unwrap();
     std::fs::create_dir_all(bindir)?;
 
@@ -334,7 +345,7 @@ fn test_upgrade_to_specific_version() -> std::io::Result<()> {
 // version on request instead of upgrading.
 #[test]
 fn test_downgrade_to_specific_version() -> std::io::Result<()> {
-    let tempdir = TempDir::new()?;
+    let tempdir = executable_tempdir()?;
     let bindir_path = &tempdir.path().join("bin");
     let bindir = Utf8Path::from_path(bindir_path).unwrap();
     std::fs::create_dir_all(bindir)?;
@@ -406,7 +417,7 @@ fn test_downgrade_to_specific_old_version() -> std::io::Result<()> {
         _ => return Ok(()),
     }
 
-    let tempdir = TempDir::new()?;
+    let tempdir = executable_tempdir()?;
     let bindir_path = &tempdir.path().join("bin");
     let bindir = Utf8Path::from_path(bindir_path).unwrap();
     std::fs::create_dir_all(bindir)?;
@@ -469,7 +480,7 @@ fn test_downgrade_to_specific_old_version() -> std::io::Result<()> {
 // https://github.com/axodotdev/cargo-dist/pull/1037
 #[test]
 fn test_upgrade_from_prefix_with_no_bin() -> std::io::Result<()> {
-    let tempdir = TempDir::new()?;
+    let tempdir = executable_tempdir()?;
     let prefix = Utf8PathBuf::from_path_buf(tempdir.path().to_path_buf()).unwrap();
     let bindir_path = &tempdir.path().join("bin");
     let bindir = Utf8Path::from_path(bindir_path).unwrap();
