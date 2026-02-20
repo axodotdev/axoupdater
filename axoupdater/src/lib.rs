@@ -23,7 +23,7 @@ use std::{fs::File, os::unix::fs::PermissionsExt};
 #[cfg(windows)]
 use self_replace;
 
-use axoasset::LocalAsset;
+use axoasset::{reqwest, LocalAsset};
 use axoprocess::Cmd;
 pub use axotag::Version;
 use camino::Utf8PathBuf;
@@ -106,6 +106,8 @@ pub struct AxoUpdater {
     always_update: bool,
     /// Whether to modify the system path when installing
     modify_path: bool,
+    /// The reqwest client to use for network requests
+    client: reqwest::Client,
 }
 
 impl Default for AxoUpdater {
@@ -133,6 +135,7 @@ impl AxoUpdater {
             tokens: AuthorizationTokens::default(),
             always_update: false,
             modify_path: true,
+            client: reqwest::Client::new(),
         }
     }
 
@@ -152,6 +155,7 @@ impl AxoUpdater {
             tokens: AuthorizationTokens::default(),
             always_update: false,
             modify_path: true,
+            client: reqwest::Client::new(),
         }
     }
 
@@ -182,7 +186,15 @@ impl AxoUpdater {
             tokens: AuthorizationTokens::default(),
             always_update: false,
             modify_path: true,
+            client: reqwest::Client::new(),
         })
+    }
+
+    /// Configures the `reqwest::Client` to use for network requests.
+    pub fn set_client(&mut self, client: reqwest::Client) -> &mut AxoUpdater {
+        self.client = client;
+
+        self
     }
 
     /// Explicitly configures the release source as an alternative to
@@ -461,13 +473,10 @@ impl AxoUpdater {
                 installer_file.set_permissions(perms)?;
             }
 
-            let client = axoasset::reqwest::Client::new();
-            let download = client
+            let download = self
+                .client
                 .get(&installer_url.browser_download_url)
-                .header(
-                    axoasset::reqwest::header::ACCEPT,
-                    "application/octet-stream",
-                )
+                .header(reqwest::header::ACCEPT, "application/octet-stream")
                 .send()
                 .await?
                 .text()
