@@ -9,6 +9,9 @@ use crate::{errors::*, AuthorizationTokens, AxoUpdater, UpdateRequest, Version};
 #[cfg(feature = "github_releases")]
 pub(crate) mod github;
 
+#[cfg(feature = "simple_releases")]
+pub(crate) mod simple;
+
 /// A struct representing a specific release, either from GitHub or Axo Releases.
 #[derive(Clone, Debug)]
 pub struct Release {
