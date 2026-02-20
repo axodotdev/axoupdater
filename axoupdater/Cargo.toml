@@ -14,10 +14,9 @@ readme = "../README.md"
 default = ["github_releases"]
 blocking = ["tokio"]
 github_releases = ["axoasset/remote"]
-tls_native_roots = ["axoasset/tls-native-roots"]
 
 [dependencies]
-axoasset = { version = "1.4.0", default-features = false, features = ["json-serde"] }
+axoasset = { version = "2.0.0", default-features = false, features = ["json-serde"] }
 axoprocess = "0.2.0"
 axotag = { version = "0.3.0" }
 camino = { version = "1.1.10", features = ["serde1"] }
