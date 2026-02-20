@@ -11,8 +11,7 @@ readme = "../README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["axo_releases", "github_releases"]
-axo_releases = ["gazenot"]
+default = ["github_releases"]
 blocking = ["tokio"]
 github_releases = ["axoasset/remote"]
 tls_native_roots = ["axoasset/tls-native-roots"]
@@ -26,9 +25,6 @@ homedir = "0.3.3"
 serde = "1.0.197"
 tempfile = "3.10.1"
 url = "2.5.7"
-
-# axo releases
-gazenot = { version = "0.3.3", features = ["client_lib"], optional = true }
 
 # blocking API
 tokio = { version = "1.48.0", features = ["full"], optional = true }
