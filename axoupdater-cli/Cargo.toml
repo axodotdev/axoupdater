@@ -10,7 +10,7 @@ readme = "../README.md"
 
 [dependencies]
 axocli = "0.3.0"
-axoupdater = { version = "=0.9.1", path = "../axoupdater", features = ["blocking"] }
+axoupdater = { version = "=0.10.0", path = "../axoupdater", features = ["blocking"] }
 clap = { version = "4.5.60", features = ["derive"] }
 
 # errors

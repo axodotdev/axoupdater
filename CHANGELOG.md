@@ -1,3 +1,7 @@
+# Version 0.10.0 (2026-02-20)
+
+This release removes support for Axo releases. Existing install receipts will still be read properly and will warn the user that updates from that source are no longer available. It also updates to reqwest 0.13.
+
 # Version 0.9.1 (2025-07-20)
 
 This release updates several dependencies.
