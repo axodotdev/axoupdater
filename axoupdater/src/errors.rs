@@ -37,11 +37,6 @@ pub enum AxoupdateError {
     #[error(transparent)]
     Axotag(#[from] axotag::errors::TagError),
 
-    /// Passed through from gazenot
-    #[cfg(feature = "axo_releases")]
-    #[error(transparent)]
-    Gazenot(#[from] gazenot::error::GazenotError),
-
     /// Failed to parse a version
     #[error(transparent)]
     Version(#[from] axotag::semver::Error),

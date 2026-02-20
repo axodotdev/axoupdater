@@ -6,8 +6,6 @@ use axoasset::reqwest;
 
 use crate::{errors::*, AuthorizationTokens, AxoUpdater, UpdateRequest, Version};
 
-#[cfg(feature = "axo_releases")]
-pub(crate) mod axodotdev;
 #[cfg(feature = "github_releases")]
 pub(crate) mod github;
 
@@ -191,11 +189,6 @@ pub(crate) async fn get_specific_version(
                 backend: "github".to_owned(),
             })
         }
-        #[cfg(feature = "axo_releases")]
-        ReleaseSourceType::Axo => {
-            axodotdev::get_specific_axo_version(name, owner, app_name, version).await?
-        }
-        #[cfg(not(feature = "axo_releases"))]
         ReleaseSourceType::Axo => {
             return Err(AxoupdateError::BackendDisabled {
                 backend: "axodotdev".to_owned(),
@@ -227,11 +220,6 @@ pub(crate) async fn get_specific_tag(
                 backend: "github".to_owned(),
             })
         }
-        #[cfg(feature = "axo_releases")]
-        ReleaseSourceType::Axo => {
-            axodotdev::get_specific_axo_tag(name, owner, app_name, tag).await?
-        }
-        #[cfg(not(feature = "axo_releases"))]
         ReleaseSourceType::Axo => {
             return Err(AxoupdateError::BackendDisabled {
                 backend: "axodotdev".to_owned(),
@@ -261,9 +249,6 @@ pub(crate) async fn get_release_list(
                 backend: "github".to_owned(),
             })
         }
-        #[cfg(feature = "axo_releases")]
-        ReleaseSourceType::Axo => axodotdev::get_axo_releases(name, owner, app_name).await?,
-        #[cfg(not(feature = "axo_releases"))]
         ReleaseSourceType::Axo => {
             return Err(AxoupdateError::BackendDisabled {
                 backend: "axodotdev".to_owned(),
