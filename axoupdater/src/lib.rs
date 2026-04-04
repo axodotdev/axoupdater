@@ -521,7 +521,7 @@ impl AxoUpdater {
             // which require opt-in to execing powershell scripts.
             // This doesn't bypass proper organization-set policies.
             command.arg("-ExecutionPolicy").arg("ByPass");
-            command.arg(&installer_path);
+            command.arg("-File").arg(&installer_path);
         }
         if self.print_installer_stdout {
             command.stdout(Stdio::inherit());
