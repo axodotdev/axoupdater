@@ -1,3 +1,9 @@
+# Version 0.10.1 (2026-08-10)
+
+This release contains no code changes but adds binaries for the arm-unknown-linux-gnueabihf, armv7-unknown-linux-gnueabi, and armv7-unknown-linux-gnueabihf targets.
+
+Note that these new targets are *currently untested*. If you encounter any issues with them, please report them!
+
 # Version 0.10.0 (2026-02-20)
 
 This release removes support for Axo releases. Existing install receipts will still be read properly and will warn the user that updates from that source are no longer available. It also updates to reqwest 0.13.
