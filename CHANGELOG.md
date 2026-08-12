@@ -1,3 +1,7 @@
+# Version 0.10.2 (2026-08-11)
+
+This release follows up the previous one by adding binaries for aarch64-pc-windows-msvc.
+
 # Version 0.10.1 (2026-08-10)
 
 This release contains no code changes but adds binaries for the arm-unknown-linux-gnueabihf, armv7-unknown-linux-gnueabi, and armv7-unknown-linux-gnueabihf targets.
