@@ -216,7 +216,7 @@ fn test_receipt_different_alternate_release_type() {
         &["axolotlsay".to_owned()],
         "0.5.0",
         "/tmp/prefix",
-        &ReleaseSourceType::Axo,
+        &ReleaseSourceType::Simple,
     );
     assert_eq!(expected, actual);
 }

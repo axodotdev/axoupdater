@@ -9,6 +9,9 @@ use crate::{errors::*, AuthorizationTokens, AxoUpdater, UpdateRequest, Version};
 #[cfg(feature = "github_releases")]
 pub(crate) mod github;
 
+#[cfg(feature = "simple_releases")]
+pub(crate) mod simple;
+
 /// A struct representing a specific release, either from GitHub or Axo Releases.
 #[derive(Clone, Debug)]
 pub struct Release {
@@ -43,8 +46,8 @@ pub struct Asset {
 pub enum ReleaseSourceType {
     /// GitHub Releases
     GitHub,
-    /// Axo Releases
-    Axo,
+    /// Simple Releases
+    Simple,
 }
 
 impl fmt::Display for ReleaseSourceType {
@@ -52,7 +55,7 @@ impl fmt::Display for ReleaseSourceType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::GitHub => write!(f, "github"),
-            Self::Axo => write!(f, "axodotdev"),
+            Self::Simple => write!(f, "simple"),
         }
     }
 }
@@ -82,8 +85,8 @@ impl AxoUpdater {
     }
 
     /// Configures AxoUpdater to use a specific Axo Releases token when performing requests.
-    pub fn set_axo_token(&mut self, token: &str) -> &mut AxoUpdater {
-        self.tokens.axodotdev = Some(token.to_owned());
+    pub fn set_simple_token(&mut self, token: &str) -> &mut AxoUpdater {
+        self.tokens.simple = Some(token.to_owned());
 
         self
     }
@@ -189,9 +192,14 @@ pub(crate) async fn get_specific_version(
                 backend: "github".to_owned(),
             })
         }
-        ReleaseSourceType::Axo => {
+        #[cfg(feature = "simple_releases")]
+        ReleaseSourceType::Simple => {
+            simple::get_specific_simple_version(name, app_name, version).await?
+        }
+        #[cfg(not(feature = "simple_releases"))]
+        ReleaseSourceType::Simple => {
             return Err(AxoupdateError::BackendDisabled {
-                backend: "axodotdev".to_owned(),
+                backend: "simple".to_owned(),
             })
         }
     };
@@ -220,9 +228,14 @@ pub(crate) async fn get_specific_tag(
                 backend: "github".to_owned(),
             })
         }
-        ReleaseSourceType::Axo => {
+        #[cfg(feature = "simple_releases")]
+        ReleaseSourceType::Simple => {
+            simple::get_specific_simple_tag(name, app_name, url, tag, client, &tokens.simple).await?
+        }
+        #[cfg(not(feature = "simple_releases"))]
+        ReleaseSourceType::Simple => {
             return Err(AxoupdateError::BackendDisabled {
-                backend: "axodotdev".to_owned(),
+                backend: "simple".to_owned(),
             })
         }
     };
@@ -249,7 +262,12 @@ pub(crate) async fn get_release_list(
                 backend: "github".to_owned(),
             })
         }
-        ReleaseSourceType::Axo => {
+        #[cfg(feature = "simple_releases")]
+        ReleaseSourceType::Simple => {
+            simple::get_simple_releases(name, url, client, &tokens.simple).await?
+        }
+        #[cfg(not(feature = "simple_releases"))]
+        ReleaseSourceType::Simple => {
             return Err(AxoupdateError::BackendDisabled {
                 backend: "axodotdev".to_owned(),
             })
@@ -271,10 +289,6 @@ pub(crate) async fn get_latest_stable_release(
     // If we're looking up a GitHub release, we can use that.
     // This cuts down on our API requests compared to the paginated release list
     // we do below.
-    // Note that abyss has an API for this, but gazenot doesn't expose it yet;
-    // we can expand this pattern to Axo Releases in a later release.
-    // It's less critical for that path because the rate limits are less of a
-    // blocker.
     #[cfg(feature = "github_releases")]
     if release_type == &ReleaseSourceType::GitHub {
         if let Ok(Some(release)) =

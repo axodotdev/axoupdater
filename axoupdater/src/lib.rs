@@ -69,7 +69,7 @@ pub enum UpdateRequest {
 #[derive(Default)]
 pub(crate) struct AuthorizationTokens {
     github: Option<String>,
-    axodotdev: Option<String>,
+    simple: Option<String>,
 }
 
 /// Tool used to produce this install receipt
