@@ -1,3 +1,7 @@
+# Version 0.10.3 (2026-10-21)
+
+This release updates dependencies.
+
 # Version 0.10.2 (2026-08-11)
 
 This release follows up the previous one by adding binaries for aarch64-pc-windows-msvc.
