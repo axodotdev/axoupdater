@@ -136,10 +136,16 @@ pub(crate) async fn get_specific_github_tag(
         .send()
         .await?
         .error_for_status()
-        .map_err(|_| AxoupdateError::VersionNotFound {
-            name: name.to_owned(),
-            app_name: app_name.to_owned(),
-            version: tag.to_owned(),
+        .map_err(|error| {
+            if error.status() == Some(reqwest::StatusCode::NOT_FOUND) {
+                AxoupdateError::VersionNotFound {
+                    name: name.to_owned(),
+                    app_name: app_name.to_owned(),
+                    version: tag.to_owned(),
+                }
+            } else {
+                AxoupdateError::Reqwest(error)
+            }
         })?
         .json()
         .await?;
@@ -312,6 +318,7 @@ mod test {
         get_github_releases, get_latest_github_release, get_next_url, get_specific_github_tag,
         github_api, GithubAsset, GithubRelease,
     };
+    use crate::errors::AxoupdateError;
     use axoasset::reqwest::{self, StatusCode};
     use axoasset::serde_json::json;
     use httpmock::prelude::*;
@@ -489,6 +496,64 @@ mod test {
         assert!(result.is_ok());
 
         release_tag_http_call.assert();
+    }
+
+    #[tokio::test]
+    #[serial] // modifying the global state environment variables
+    async fn test_get_specific_github_tag_http_errors() {
+        for status in [
+            StatusCode::FORBIDDEN,
+            StatusCode::TOO_MANY_REQUESTS,
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ] {
+            let server = MockServer::start_async().await;
+            env::set_var("APP_INSTALLER_GHE_BASE_URL", server.base_url());
+
+            let release_tag_http_call = server
+                .mock_async(|when, then| {
+                    when.method("GET")
+                        .path("/api/v3/repos/owner/name/releases/tags/1.0.0");
+                    then.status(status.as_u16());
+                })
+                .await;
+
+            let client = reqwest::Client::new();
+            let result =
+                get_specific_github_tag("name", "owner", "app", "1.0.0", &client, &None).await;
+            env::remove_var("APP_INSTALLER_GHE_BASE_URL");
+
+            release_tag_http_call.assert();
+            assert!(
+                matches!(result, Err(AxoupdateError::Reqwest(ref error)) if error.status() == Some(status)),
+                "expected HTTP {status} to be preserved, got {result:?}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    #[serial] // modifying the global state environment variables
+    async fn test_get_specific_github_tag_not_found() {
+        let server = MockServer::start_async().await;
+        env::set_var("APP_INSTALLER_GHE_BASE_URL", server.base_url());
+
+        let release_tag_http_call = server
+            .mock_async(|when, then| {
+                when.method("GET")
+                    .path("/api/v3/repos/owner/name/releases/tags/1.0.0");
+                then.status(StatusCode::NOT_FOUND.as_u16());
+            })
+            .await;
+
+        let client = reqwest::Client::new();
+        let result = get_specific_github_tag("name", "owner", "app", "1.0.0", &client, &None).await;
+        env::remove_var("APP_INSTALLER_GHE_BASE_URL");
+
+        release_tag_http_call.assert();
+        assert!(matches!(
+            result,
+            Err(AxoupdateError::VersionNotFound { name, app_name, version })
+                if name == "name" && app_name == "app" && version == "1.0.0"
+        ));
     }
 
     #[tokio::test]
